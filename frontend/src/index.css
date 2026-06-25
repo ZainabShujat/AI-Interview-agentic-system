@@ -1,0 +1,904 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Color Palette - Premium Slate & Obsidian Dark Mode */
+    --color-bg-primary: #0a0c10;
+    /* Deep Obsidian Blue */
+    --color-bg-secondary: #121620;
+    /* Dark Navy Slate */
+    --color-bg-tertiary: #1b2130;
+    /* Dark Muted Blue Slate */
+
+    --color-border-subtle: rgba(59, 130, 246, 0.1);
+    /* Muted Blue Border */
+    --color-border-hover: rgba(59, 130, 246, 0.25);
+    /* Interactive blue border */
+
+    --color-text-primary: #ffffff;
+    /* Pure White */
+    --color-text-secondary: #f1f5f9;
+    /* High Contrast Off-White (100% opacity) */
+    --color-text-tertiary: #94a3b8;
+    /* Bright Muted Gray (100% opacity) */
+
+    /* Accents - Premium Blue (Dark to Light to White) */
+    --color-accent: #2563eb;
+    /* Cobalt Blue */
+    --color-accent-hover: #3b82f6;
+    /* Bright Sky Blue */
+    --color-accent-subtle: #60a5fa;
+    /* Muted Sky Blue */
+    --color-accent-teal: #38bdf8;
+    --color-accent-coral: #f43f5e;
+    --color-accent-indigo: #4f46e5;
+
+    /* Spacing System */
+    --space-2xs: 0.25rem;
+    --space-xs: 0.5rem;
+    --space-sm: 0.75rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+    --space-3xl: 4.5rem;
+
+    /* Animation Speeds */
+    --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+    --transition-medium: 300ms cubic-bezier(0.16, 1, 0.3, 1);
+    --transition-slow: 500ms cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Shadows & Glows */
+    --shadow-premium: 0 4px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --glow-subtle: 0 0 40px rgba(37, 99, 235, 0.05);
+  }
+
+  html.light-theme {
+    --color-bg-primary: #f8fafc;
+    /* Soft Off-White */
+    --color-bg-secondary: #ffffff;
+    /* Pure White */
+    --color-bg-tertiary: #f1f5f9;
+    /* Light Slate Gray */
+
+    --color-border-subtle: rgba(59, 130, 246, 0.08);
+    --color-border-hover: rgba(59, 130, 246, 0.2);
+
+    --color-text-primary: #000000;
+    /* Pure Black */
+    --color-text-secondary: #0f172a;
+    /* High Contrast Dark Slate (100% opacity) */
+    --color-text-tertiary: #475569;
+    /* Slate Gray (100% opacity) */
+
+    --color-accent: #2563eb;
+    --color-accent-hover: #1d4ed8;
+    --color-accent-subtle: #3b82f6;
+
+    --shadow-premium: 0 4px 30px rgba(15, 23, 42, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    --glow-subtle: 0 0 40px rgba(37, 99, 235, 0.02);
+  }
+}
+
+/* Reset and Globals */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-bg-tertiary);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
+}
+
+/* Card System */
+.card-premium {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-premium);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-medium);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-premium::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05), transparent);
+}
+
+.card-premium:hover {
+  border-color: var(--color-border-hover);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Interactive Card Variant */
+.card-interactive {
+  cursor: pointer;
+}
+
+.card-interactive:hover {
+  transform: translateY(-2px);
+}
+
+/* Subtly Glassmorphic Card */
+.card-glass {
+  background: rgba(15, 17, 21, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Premium Buttons */
+.btn-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  border: 1px solid transparent;
+  outline: none;
+}
+
+.btn-primary {
+  background-color: var(--color-accent);
+  color: var(--color-bg-primary);
+}
+
+.btn-primary:hover {
+  background-color: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--color-text-primary);
+  border-color: var(--color-border-subtle);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-bg-secondary);
+  border-color: var(--color-border-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+}
+
+.btn-tertiary {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  padding: 0.5rem 1rem;
+}
+
+.btn-tertiary:hover {
+  color: var(--color-text-primary);
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Input Fields */
+.input-base {
+  background-color: rgba(7, 8, 10, 0.6);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.9375rem;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input-base:focus {
+  border-color: var(--color-text-tertiary);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+}
+
+.input-base::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* Typography Helpers */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-text-primary) 30%, var(--color-text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-indigo {
+  background: linear-gradient(135deg, var(--color-text-primary) 30%, var(--color-accent-indigo) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-accent {
+  background: linear-gradient(135deg, #ffffff 30%, var(--color-text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animation utilities */
+@keyframes pulseGlow {
+
+  0%,
+  100% {
+    opacity: 0.97;
+  }
+
+  50% {
+    opacity: 0.99;
+  }
+}
+
+.animate-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+/* Grid & Layout Utilities */
+.layout-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.mx-auto {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex-grow: 1;
+  padding-top: var(--space-3xl);
+  padding-bottom: var(--space-3xl);
+}
+
+/* Layout Utility Safety Net */
+.flex {
+  display: flex !important;
+}
+
+.inline-flex {
+  display: inline-flex !important;
+}
+
+.flex-col {
+  flex-direction: column !important;
+}
+
+.items-center {
+  align-items: center !important;
+}
+
+.items-start {
+  align-items: flex-start !important;
+}
+
+.justify-between {
+  justify-content: space-between !important;
+}
+
+.justify-center {
+  justify-content: center !important;
+}
+
+.flex-grow {
+  flex-grow: 1 !important;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0 !important;
+}
+
+.gap-1 {
+  gap: 0.25rem !important;
+}
+
+.gap-1\.5 {
+  gap: 0.375rem !important;
+}
+
+.gap-2 {
+  gap: 0.5rem !important;
+}
+
+.gap-3 {
+  gap: 0.75rem !important;
+}
+
+.gap-4 {
+  gap: 1rem !important;
+}
+
+.gap-5 {
+  gap: 1.25rem !important;
+}
+
+.gap-6 {
+  gap: 1.5rem !important;
+}
+
+.gap-8 {
+  gap: 2rem !important;
+}
+
+.gap-12 {
+  gap: 3rem !important;
+}
+
+.grid {
+  display: grid !important;
+}
+
+.grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+}
+
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.grid-cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+@media (min-width: 768px) {
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .md\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .md\:col-span-5 {
+    grid-column: span 5 / span 5 !important;
+  }
+
+  .md\:col-span-6 {
+    grid-column: span 6 / span 6 !important;
+  }
+
+  .md\:col-span-7 {
+    grid-column: span 7 / span 7 !important;
+  }
+
+  .md\:flex {
+    display: flex !important;
+  }
+
+  .md\:flex-row {
+    flex-direction: row !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lg\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .lg\:grid-cols-12 {
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  }
+
+  .lg\:col-span-1 {
+    grid-column: span 1 / span 1 !important;
+  }
+
+  .lg\:col-span-3 {
+    grid-column: span 3 / span 3 !important;
+  }
+
+  .lg\:col-span-5 {
+    grid-column: span 5 / span 5 !important;
+  }
+
+  .lg\:col-span-7 {
+    grid-column: span 7 / span 7 !important;
+  }
+
+  .lg\:col-span-9 {
+    grid-column: span 9 / span 9 !important;
+  }
+
+  .lg\:flex {
+    display: flex !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .xl\:grid-cols-12 {
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  }
+
+  .xl\:col-span-4 {
+    grid-column: span 4 / span 4 !important;
+  }
+
+  .xl\:col-span-8 {
+    grid-column: span 8 / span 8 !important;
+  }
+}
+
+/* Sizing Utilities */
+.w-full {
+  width: 100% !important;
+}
+
+.h-full {
+  height: 100% !important;
+}
+
+.w-1\.5 {
+  width: 0.375rem !important;
+}
+
+.h-1\.5 {
+  height: 0.375rem !important;
+}
+
+.w-2 {
+  width: 0.5rem !important;
+}
+
+.h-2 {
+  height: 0.5rem !important;
+}
+
+.w-3\.5 {
+  width: 0.875rem !important;
+}
+
+.h-3\.5 {
+  height: 0.875rem !important;
+}
+
+.w-4 {
+  width: 1rem !important;
+}
+
+.h-4 {
+  height: 1rem !important;
+}
+
+.w-5 {
+  width: 1.25rem !important;
+}
+
+.h-5 {
+  height: 1.25rem !important;
+}
+
+.w-6 {
+  width: 1.5rem !important;
+}
+
+.h-6 {
+  height: 1.5rem !important;
+}
+
+.w-9 {
+  width: 2.25rem !important;
+}
+
+.h-9 {
+  height: 2.25rem !important;
+}
+
+.w-12 {
+  width: 3rem !important;
+}
+
+.h-12 {
+  height: 3rem !important;
+}
+
+.w-16 {
+  width: 4rem !important;
+}
+
+.h-16 {
+  height: 4rem !important;
+}
+
+.w-24 {
+  width: 6rem !important;
+}
+
+.h-24 {
+  height: 6rem !important;
+}
+
+.h-2\.5 {
+  height: 0.625rem !important;
+}
+
+.h-1 {
+  height: 0.25rem !important;
+}
+
+.h-\[120px\] {
+  height: 120px !important;
+}
+
+.h-\[80px\] {
+  height: 80px !important;
+}
+
+/* Spacers & Padding */
+.pt-1 {
+  padding-top: 0.25rem !important;
+}
+
+.pt-2 {
+  padding-top: 0.5rem !important;
+}
+
+.pt-4 {
+  padding-top: 1rem !important;
+}
+
+.pt-10 {
+  padding-top: 2.5rem !important;
+}
+
+.pt-16 {
+  padding-top: 4rem !important;
+}
+
+.pb-2\.5 {
+  padding-bottom: 0.625rem !important;
+}
+
+.pb-3 {
+  padding-bottom: 0.75rem !important;
+}
+
+.pb-4 {
+  padding-bottom: 1rem !important;
+}
+
+.pb-6 {
+  padding-bottom: 1.5rem !important;
+}
+
+.pb-16 {
+  padding-bottom: 4rem !important;
+}
+
+.pb-20 {
+  padding-bottom: 5rem !important;
+}
+
+.pb-24 {
+  padding-bottom: 6rem !important;
+}
+
+.mt-0\.5 {
+  margin-top: 0.125rem !important;
+}
+
+.mt-1 {
+  margin-top: 0.25rem !important;
+}
+
+.mt-1\.5 {
+  margin-top: 0.375rem !important;
+}
+
+.mt-3 {
+  margin-top: 0.75rem !important;
+}
+
+.mt-4 {
+  margin-top: 1rem !important;
+}
+
+.mb-1 {
+  margin-bottom: 0.25rem !important;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem !important;
+}
+
+.mb-3 {
+  margin-bottom: 0.75rem !important;
+}
+
+.mb-4 {
+  margin-bottom: 1rem !important;
+}
+
+.mb-6 {
+  margin-bottom: 1.5rem !important;
+}
+
+.mb-8 {
+  margin-bottom: 2rem !important;
+}
+
+.mb-12 {
+  margin-bottom: 3rem !important;
+}
+
+.mb-16 {
+  margin-bottom: 4rem !important;
+}
+
+.mr-2 {
+  margin-right: 0.5rem !important;
+}
+
+/* Flex margin stacking equivalents */
+.space-y-1\.5>*+* {
+  margin-top: 0.375rem !important;
+}
+
+.space-y-2>*+* {
+  margin-top: 0.5rem !important;
+}
+
+.space-y-3>*+* {
+  margin-top: 0.75rem !important;
+}
+
+.space-y-3\.5>*+* {
+  margin-top: 0.875rem !important;
+}
+
+.space-y-4>*+* {
+  margin-top: 1rem !important;
+}
+
+.space-y-5>*+* {
+  margin-top: 1.25rem !important;
+}
+
+.space-y-6>*+* {
+  margin-top: 1.5rem !important;
+}
+
+.space-y-8>*+* {
+  margin-top: 2rem !important;
+}
+
+.space-y-12>*+* {
+  margin-top: 3rem !important;
+}
+
+/* Fonts & Colors */
+.text-\[8px\] {
+  font-size: 8px !important;
+}
+
+.text-\[9px\] {
+  font-size: 9px !important;
+}
+
+.text-\[10px\] {
+  font-size: 10px !important;
+}
+
+.text-\[11px\] {
+  font-size: 11px !important;
+}
+
+.text-xs {
+  font-size: 0.75rem !important;
+}
+
+.text-sm {
+  font-size: 0.875rem !important;
+}
+
+.text-base {
+  font-size: 1rem !important;
+}
+
+.text-lg {
+  font-size: 1.125rem !important;
+}
+
+.text-xl {
+  font-size: 1.25rem !important;
+}
+
+.text-2xl {
+  font-size: 1.5rem !important;
+}
+
+.text-3xl {
+  font-size: 1.875rem !important;
+}
+
+.text-4xl {
+  font-size: 2.25rem !important;
+}
+
+.text-5xl {
+  font-size: 3rem !important;
+}
+
+.text-6xl {
+  font-size: 3.75rem !important;
+}
+
+.font-semibold {
+  font-weight: 600 !important;
+}
+
+.font-bold {
+  font-weight: 700 !important;
+}
+
+.font-black {
+  font-weight: 900 !important;
+}
+
+/* Proctoring Colors */
+.bg-emerald-500\/10 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+}
+
+.text-emerald-400 {
+  color: #34d399 !important;
+}
+
+.bg-rose-500\/10 {
+  background-color: rgba(244, 63, 94, 0.1) !important;
+}
+
+.text-rose-400 {
+  color: #fb7185 !important;
+}
+
+/* Minimalist SaaS Redesign Typography */
+.text-hero {
+  font-size: clamp(3.25rem, 5vw, 4.5rem) !important;
+  /* 52px - 72px */
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.04em !important;
+  color: var(--color-text-primary) !important;
+}
+
+.text-section-title {
+  font-size: clamp(2rem, 3.5vw, 2.5rem) !important;
+  /* 32px - 40px */
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.03em !important;
+  color: var(--color-text-primary) !important;
+}
+
+.text-body-large {
+  font-size: clamp(1rem, 1.5vw, 1.125rem) !important;
+  /* 16px - 18px */
+  line-height: 1.625 !important;
+  color: var(--color-text-secondary) !important;
+}
+
+/* Theme color utilities */
+.text-theme-primary {
+  color: var(--color-text-primary) !important;
+}
+
+.text-theme-secondary {
+  color: var(--color-text-secondary) !important;
+}
+
+.text-theme-tertiary {
+  color: var(--color-text-tertiary) !important;
+}
+
+/* Border styles */
+.border-subtle {
+  border-color: var(--color-border-subtle) !important;
+}
+
+/* Reduced border styling */
+.border-none-important {
+  border: none !important;
+}
+
+.card-minimalist {
+  background-color: var(--color-bg-secondary);
+  border-radius: 12px;
+  padding: 2.5rem;
+  transition: transform var(--transition-medium);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Whitespace helper classes */
+.py-28 {
+  padding-top: 7rem !important;
+  padding-bottom: 7rem !important;
+}
+
+.py-32 {
+  padding-top: 8rem !important;
+  padding-bottom: 8rem !important;
+}
+
+.py-40 {
+  padding-top: 10rem !important;
+  padding-bottom: 10rem !important;
+}
