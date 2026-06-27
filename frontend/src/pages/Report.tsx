@@ -182,7 +182,7 @@ export default function Report() {
     setResumeId(null);
     setJdId(null);
     setInterviewId(null);
-    navigate('/upload');
+    navigate('/student');
   };
 
   if (loading) {
@@ -331,7 +331,7 @@ export default function Report() {
                 <YAxis dataKey="name" type="category" tick={{ fill: 'var(--color-text-secondary)', fontSize: 10 }} stroke="var(--color-border-subtle)" />
                 <Tooltip
                   contentStyle={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border-subtle)', borderRadius: '8px' }}
-                  labelStyle={{ color: 'white' }}
+                  labelStyle={{ color: 'var(--color-text-primary)' }}
                 />
                 <Bar dataKey="score" fill="var(--color-text-secondary)" radius={[0, 4, 4, 0]} barSize={12} />
               </BarChart>

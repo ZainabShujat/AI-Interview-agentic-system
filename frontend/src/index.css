@@ -4,36 +4,27 @@
 
 @layer base {
   :root {
-    /* Color Palette - Premium Slate & Obsidian Dark Mode */
-    --color-bg-primary: #0a0c10;
-    /* Deep Obsidian Blue */
-    --color-bg-secondary: #121620;
-    /* Dark Navy Slate */
-    --color-bg-tertiary: #1b2130;
-    /* Dark Muted Blue Slate */
+    /* Mauve enterprise palette */
+    --color-bg-primary: #100b12;
+    --color-bg-secondary: #1a111d;
+    --color-bg-tertiary: #27182c;
 
-    --color-border-subtle: rgba(59, 130, 246, 0.1);
-    /* Muted Blue Border */
-    --color-border-hover: rgba(59, 130, 246, 0.25);
-    /* Interactive blue border */
+    --color-border-subtle: rgba(216, 180, 254, 0.16);
+    --color-border-hover: rgba(232, 204, 255, 0.42);
 
     --color-text-primary: #ffffff;
-    /* Pure White */
-    --color-text-secondary: #f1f5f9;
-    /* High Contrast Off-White (100% opacity) */
-    --color-text-tertiary: #94a3b8;
-    /* Bright Muted Gray (100% opacity) */
+    --color-text-secondary: #ffffff;
+    --color-text-tertiary: #ffffff;
 
-    /* Accents - Premium Blue (Dark to Light to White) */
-    --color-accent: #2563eb;
-    /* Cobalt Blue */
-    --color-accent-hover: #3b82f6;
-    /* Bright Sky Blue */
-    --color-accent-subtle: #60a5fa;
-    /* Muted Sky Blue */
-    --color-accent-teal: #38bdf8;
-    --color-accent-coral: #f43f5e;
-    --color-accent-indigo: #4f46e5;
+    --color-accent: #c084fc;
+    --color-accent-hover: #d8b4fe;
+    --color-accent-subtle: #e9d5ff;
+    --color-accent-teal: #f0abfc;
+    --color-accent-coral: #fb7185;
+    --color-accent-indigo: #a78bfa;
+    --color-accent-deep: #7e22ce;
+    --color-mauve-wash: rgba(192, 132, 252, 0.12);
+    --color-mauve-strong: rgba(192, 132, 252, 0.24);
 
     /* Spacing System */
     --space-2xs: 0.25rem;
@@ -51,34 +42,34 @@
     --transition-slow: 500ms cubic-bezier(0.16, 1, 0.3, 1);
 
     /* Shadows & Glows */
-    --shadow-premium: 0 4px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    --glow-subtle: 0 0 40px rgba(37, 99, 235, 0.05);
+    --shadow-premium: 0 18px 60px rgba(0, 0, 0, 0.38), 0 0 40px rgba(192, 132, 252, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    --glow-subtle: 0 0 48px rgba(192, 132, 252, 0.12);
   }
 
   html.light-theme {
-    --color-bg-primary: #f8fafc;
-    /* Soft Off-White */
-    --color-bg-secondary: #ffffff;
-    /* Pure White */
-    --color-bg-tertiary: #f1f5f9;
-    /* Light Slate Gray */
+    --color-bg-primary: #fffaff;
+    --color-bg-secondary: #f6edf8;
+    --color-bg-tertiary: #eadcf0;
 
-    --color-border-subtle: rgba(59, 130, 246, 0.08);
-    --color-border-hover: rgba(59, 130, 246, 0.2);
+    --color-border-subtle: rgba(126, 34, 206, 0.16);
+    --color-border-hover: rgba(126, 34, 206, 0.34);
 
     --color-text-primary: #000000;
-    /* Pure Black */
-    --color-text-secondary: #0f172a;
-    /* High Contrast Dark Slate (100% opacity) */
-    --color-text-tertiary: #475569;
-    /* Slate Gray (100% opacity) */
+    --color-text-secondary: #000000;
+    --color-text-tertiary: #000000;
 
-    --color-accent: #2563eb;
-    --color-accent-hover: #1d4ed8;
-    --color-accent-subtle: #3b82f6;
+    --color-accent: #8b5cf6;
+    --color-accent-hover: #7e22ce;
+    --color-accent-subtle: #a855f7;
+    --color-accent-teal: #c026d3;
+    --color-accent-coral: #be123c;
+    --color-accent-indigo: #7c3aed;
+    --color-accent-deep: #581c87;
+    --color-mauve-wash: rgba(139, 92, 246, 0.12);
+    --color-mauve-strong: rgba(139, 92, 246, 0.22);
 
-    --shadow-premium: 0 4px 30px rgba(15, 23, 42, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-    --glow-subtle: 0 0 40px rgba(37, 99, 235, 0.02);
+    --shadow-premium: 0 18px 55px rgba(88, 28, 135, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.86);
+    --glow-subtle: 0 0 42px rgba(139, 92, 246, 0.12);
   }
 }
 
@@ -131,9 +122,11 @@ h6 {
 
 /* Card System */
 .card-premium {
-  background-color: var(--color-bg-secondary);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 38%),
+    var(--color-bg-secondary);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: var(--space-lg);
   box-shadow: var(--shadow-premium);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-medium);
@@ -153,7 +146,7 @@ h6 {
 
 .card-premium:hover {
   border-color: var(--color-border-hover);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.34), 0 0 30px rgba(192, 132, 252, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.09);
 }
 
 /* Interactive Card Variant */
@@ -192,12 +185,13 @@ h6 {
 }
 
 .btn-primary {
-  background-color: var(--color-accent);
-  color: var(--color-bg-primary);
+  background: linear-gradient(135deg, var(--color-accent-deep), var(--color-accent) 52%, var(--color-accent-teal));
+  color: var(--color-text-primary);
+  box-shadow: 0 10px 24px rgba(126, 34, 206, 0.24);
 }
 
 .btn-primary:hover {
-  background-color: #e2e8f0;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-hover));
   transform: translateY(-1px);
 }
 
@@ -213,13 +207,13 @@ h6 {
 }
 
 .btn-secondary {
-  background-color: transparent;
+  background-color: var(--color-mauve-wash);
   color: var(--color-text-primary);
   border-color: var(--color-border-subtle);
 }
 
 .btn-secondary:hover {
-  background-color: var(--color-bg-secondary);
+  background-color: var(--color-mauve-strong);
   border-color: var(--color-border-hover);
   transform: translateY(-1px);
 }
@@ -241,7 +235,7 @@ h6 {
 
 /* Input Fields */
 .input-base {
-  background-color: rgba(7, 8, 10, 0.6);
+  background-color: rgba(192, 132, 252, 0.06);
   border: 1px solid var(--color-border-subtle);
   border-radius: 8px;
   color: var(--color-text-primary);
@@ -254,12 +248,94 @@ h6 {
 }
 
 .input-base:focus {
-  border-color: var(--color-text-tertiary);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+  border-color: var(--color-accent-hover);
+  box-shadow: 0 0 0 3px var(--color-mauve-wash);
 }
 
 .input-base::placeholder {
   color: var(--color-text-tertiary);
+}
+
+.text-white,
+.text-white\/80,
+.text-white\/90,
+.text-black,
+.hover\:text-white:hover,
+.text-dark-300,
+.text-dark-400,
+.text-dark-500,
+.text-slate-950,
+.text-slate-800,
+.text-slate-700 {
+  color: var(--color-text-primary) !important;
+}
+
+html.light-theme :where(h1, h2, h3, h4, h5, h6, p, span, a, button, label, input, textarea, td, th, li, strong, small, div) {
+  color: #000000 !important;
+}
+
+html:not(.light-theme) :where(h1, h2, h3, h4, h5, h6, p, span, a, button, label, input, textarea, td, th, li, strong, small, div) {
+  color: #ffffff !important;
+}
+
+/* Mauve compatibility layer for legacy Tailwind color utilities used in components. */
+.bg-blue-600,
+.hover\:bg-blue-700:hover,
+.bg-indigo-500\/20,
+.bg-blue-500\/10,
+.bg-blue-600\/10,
+.bg-indigo-500\/10 {
+  background-color: var(--color-accent) !important;
+}
+
+.bg-blue-500\/10,
+.bg-blue-600\/10,
+.bg-indigo-500\/20,
+.bg-indigo-500\/10 {
+  background-color: var(--color-mauve-wash) !important;
+}
+
+.text-blue-400,
+.text-blue-500,
+.text-blue-600,
+.text-indigo-300,
+.text-indigo-400,
+.text-emerald-400,
+.text-emerald-500,
+.text-amber-300,
+.text-amber-400,
+.text-amber-500 {
+  color: var(--color-text-primary) !important;
+}
+
+.border-blue-500\/20,
+.border-indigo-500\/20,
+.border-emerald-400\/20,
+.border-emerald-500\/20,
+.border-amber-500\/20 {
+  border-color: var(--color-border-hover) !important;
+}
+
+.shadow-blue-950\/20,
+.hover\:shadow-blue-500\/10:hover {
+  box-shadow: 0 16px 34px rgba(126, 34, 206, 0.2) !important;
+}
+
+.bg-emerald-500\/10,
+.bg-amber-500\/10 {
+  background-color: var(--color-mauve-wash) !important;
+}
+
+.bg-rose-500\/10 {
+  background-color: rgba(244, 63, 94, 0.12) !important;
+}
+
+.text-rose-400 {
+  color: var(--color-text-primary) !important;
+}
+
+.border-rose-500\/20 {
+  border-color: rgba(244, 63, 94, 0.28) !important;
 }
 
 /* Typography Helpers */
@@ -814,19 +890,19 @@ h6 {
 
 /* Proctoring Colors */
 .bg-emerald-500\/10 {
-  background-color: rgba(16, 185, 129, 0.1) !important;
+  background-color: var(--color-mauve-wash) !important;
 }
 
 .text-emerald-400 {
-  color: #34d399 !important;
+  color: var(--color-text-primary) !important;
 }
 
 .bg-rose-500\/10 {
-  background-color: rgba(244, 63, 94, 0.1) !important;
+  background-color: rgba(244, 63, 94, 0.12) !important;
 }
 
 .text-rose-400 {
-  color: #fb7185 !important;
+  color: var(--color-text-primary) !important;
 }
 
 /* Minimalist SaaS Redesign Typography */

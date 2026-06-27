@@ -5,9 +5,11 @@ import Footer from './components/Footer';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import Upload from './pages/Upload';
+import StudentAssessment from './pages/StudentAssessment';
 import RoleReadiness from './pages/RoleReadiness';
 import Interview from './pages/Interview';
 import Report from './pages/Report';
+import JobLeaderboard from './pages/JobLeaderboard';
 
 // Define a simple context to store session/upload data
 interface SessionContextType {
@@ -42,9 +44,15 @@ export default function App() {
           <main className="main-content flex-grow pt-24 pb-16">
             <Routes>
               <Route path="/" element={<Landing />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/upload" element={<Upload />} />
-              <Route path="/match" element={<RoleReadiness />} />
+              <Route path="/student" element={<StudentAssessment />} />
+              <Route path="/student/readiness" element={<RoleReadiness />} />
+              <Route path="/student/leaderboard" element={<JobLeaderboard />} />
+              <Route path="/recruiter" element={<Dashboard />} />
+              <Route path="/recruiter/create" element={<Upload />} />
+              <Route path="/recruiter/report" element={<Report />} />
+              <Route path="/dashboard" element={<Navigate to="/recruiter" replace />} />
+              <Route path="/upload" element={<Navigate to="/student" replace />} />
+              <Route path="/match" element={<Navigate to="/student/readiness" replace />} />
               <Route path="/interview" element={<Interview />} />
               <Route path="/report" element={<Report />} />
               <Route path="*" element={<Navigate to="/" replace />} />

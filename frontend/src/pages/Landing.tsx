@@ -1,383 +1,218 @@
-import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  ArrowRight, ShieldCheck, CheckCircle2, MessageSquare, 
-  Layers, Users, Sliders, Database, History, Eye
+  ArrowRight,
+  BarChart3,
+  BrainCircuit,
+  Building2,
+  FileSearch,
+  GraduationCap,
+  MessageSquare,
+  ShieldCheck,
+  Trophy,
+  Users,
+  Workflow,
 } from 'lucide-react';
 
+const fadeInUp = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } },
+};
+
+const recruiterFlow = [
+  'Create role intake',
+  'Parse JD into hiring blueprint',
+  'Screen parsed candidate profiles',
+  'Review ranking, evidence, and full reports',
+];
+
+const platformSteps = [
+  {
+    icon: FileSearch,
+    title: 'Resume and JD agents',
+    body: 'Extract skills, experience, domain, seniority, responsibilities, and candidate evidence into structured records.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Deterministic match analysis',
+    body: 'The match score is computed from normalized structured data so recruiters can see exactly what matched and what is missing.',
+  },
+  {
+    icon: Workflow,
+    title: 'Interview planner',
+    body: 'The system turns role gaps into an interview blueprint across resume validation, technical, scenario, behavioral, and leadership rounds.',
+  },
+  {
+    icon: BrainCircuit,
+    title: 'Adaptive interview engine',
+    body: 'Questioning adapts to previous answers, difficulty, weak areas, and demonstrated strengths instead of following a fixed script.',
+  },
+  {
+    icon: MessageSquare,
+    title: 'Judge and memory agents',
+    body: 'Every answer is evaluated for accuracy, depth, communication, practicality, problem solving, and role-specific signal.',
+  },
+  {
+    icon: Trophy,
+    title: 'Reports and leaderboard',
+    body: 'Students see readiness and ranking. Recruiters see candidate ranking, skill heatmaps, transcripts, and full reports.',
+  },
+];
+
 export default function Landing() {
-  const storySectionRef = useRef<HTMLDivElement>(null);
-
-  const scrollToStory = () => {
-    storySectionRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const fadeInUpVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } }
-  };
-
   return (
-    <div className="relative min-h-screen font-sans selection:bg-blue-600 selection:text-white transition-colors duration-300 animate-glow" style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}>
-      {/* Background Soft Glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.08),transparent_60%)] pointer-events-none" />
+    <div className="relative min-h-screen font-sans" style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}>
+      <section className="max-w-6xl mx-auto px-6 pt-24 pb-16 md:pt-32 md:pb-24">
+        <motion.div initial="hidden" animate="visible" variants={fadeInUp} className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+          <div className="lg:col-span-7 space-y-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-blue-500/20 bg-blue-600/10 text-blue-400 text-xs font-bold uppercase tracking-widest">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Agentic hiring assessment platform
+            </div>
 
-      {/* --- HERO SECTION --- */}
-      <section className="relative z-10 max-w-5xl mx-auto px-6 pt-20 pb-16 md:pt-28 md:pb-24 text-center">
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={fadeInUpVariants}
-          className="space-y-10"
-        >
-          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-semibold border border-blue-500/20">
-            <span>Now in Public Beta</span>
+            <div className="space-y-5">
+              <h1 className="text-5xl md:text-6xl font-black leading-tight tracking-tight text-theme-primary">
+                Screen candidates with adaptive AI interviews and evidence-backed hiring reports.
+              </h1>
+              <p className="text-lg leading-8 max-w-2xl text-theme-secondary">
+                HireIntel is mostly built for recruiters: create role blueprints, parse candidates, run adaptive interviews, rank applicants, and review full diagnostic reports. Students can also self-assess against a target job and see where they rank.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link to="/recruiter" className="btn-base btn-primary px-6 py-3 gap-2">
+                <Building2 className="w-4 h-4" />
+                <span>Open Recruiter Workspace</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link to="/student" className="btn-base btn-secondary px-6 py-3 gap-2">
+                <GraduationCap className="w-4 h-4" />
+                <span>Student Self-Assessment</span>
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+              {[
+                ['JD Parsing', 'Structured role blueprint'],
+                ['Resume Parsing', 'Candidate evidence'],
+                ['Adaptive Interview', 'Follow-up questions'],
+                ['Leaderboard', 'Ranked by job'],
+              ].map(([label, body]) => (
+                <div key={label} className="rounded-lg border border-subtle p-4" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
+                  <span className="text-xs font-bold text-theme-primary block">{label}</span>
+                  <span className="text-[11px] text-theme-secondary">{body}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <h1 className="text-hero tracking-tight max-w-4xl mx-auto font-black leading-tight text-theme-primary">
-            Build interviews that think like your best hiring manager.
-          </h1>
+          <div className="lg:col-span-5">
+            <div className="card-premium p-6 space-y-5">
+              <div className="flex items-start justify-between gap-4 pb-4 border-b border-subtle">
+                <div>
+                  <span className="text-[10px] uppercase tracking-widest font-bold text-theme-tertiary block mb-1">Recruiter Control Room</span>
+                  <h2 className="text-xl font-bold text-theme-primary">Senior AI Engineer</h2>
+                  <p className="text-xs text-theme-secondary mt-1">Healthcare GenAI platform role</p>
+                </div>
+                <span className="text-xs font-bold px-2.5 py-1 rounded-md border border-emerald-400/20 text-emerald-400 bg-emerald-500/10">
+                  82% Match
+                </span>
+              </div>
 
-          <p className="text-body-large max-w-2xl mx-auto font-medium text-theme-secondary">
-            An evidence-based screening suite that maps role requirements, conducts adaptive technical conversations, and delivers clear recommendations.
-          </p>
+              <div className="space-y-3">
+                {recruiterFlow.map((item, index) => (
+                  <div key={item} className="flex items-center gap-3 rounded-lg border border-subtle p-3" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
+                    <div className="w-7 h-7 rounded-md bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-[11px] font-bold text-blue-400">
+                      {index + 1}
+                    </div>
+                    <span className="text-sm font-semibold text-theme-primary">{item}</span>
+                  </div>
+                ))}
+              </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Link 
-              to="/upload" 
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-3.5 px-8 rounded-lg shadow-lg hover:shadow-blue-500/10 transition-all"
-            >
-              <span>Start Screening Session</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <button 
-              onClick={scrollToStory}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-transparent border border-subtle hover:bg-slate-800/10 dark:hover:bg-white/5 font-medium text-sm py-3.5 px-8 rounded-lg transition-colors text-theme-secondary"
-              style={{ borderColor: 'var(--color-border-subtle)' }}
-            >
-              <span>See how it works</span>
-            </button>
+              <div className="grid grid-cols-3 gap-3 pt-1">
+                <MiniMetric label="Rank" value="#2" />
+                <MiniMetric label="Score" value="88" />
+                <MiniMetric label="Signal" value="Hire" />
+              </div>
+            </div>
           </div>
         </motion.div>
       </section>
 
-      {/* --- SOCIAL PROOF STRIP --- */}
-      <div className="border-y border-subtle py-8 text-center" style={{ borderColor: 'var(--color-border-subtle)', backgroundColor: 'var(--color-bg-secondary)' }}>
-        <p className="text-xs uppercase tracking-widest font-semibold mb-4 text-theme-tertiary">
-          Trusted by engineering-first teams
-        </p>
-        <div className="flex flex-wrap justify-center items-center gap-x-12 gap-y-4 text-sm font-bold text-theme-secondary">
-          <span>Acme Corp</span>
-          <span>·</span>
-          <span>TechFlow</span>
-          <span>·</span>
-          <span>QuantumHR</span>
-          <span>·</span>
-          <span>BuildStack</span>
+      <section className="border-y border-subtle" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
+        <div className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <ValueCard icon={Users} title="For recruiters" body="Screen many candidates against one job, compare them on a leaderboard, and open full reports with transcripts and scoring evidence." />
+          <ValueCard icon={GraduationCap} title="For students" body="Upload a resume and target JD, measure readiness, complete the AI interview, and see your ranking for that job." />
+          <ValueCard icon={ShieldCheck} title="For enterprises" body="Keep the process explainable: role blueprint, deterministic fit, adaptive interview evidence, and auditable recommendations." />
         </div>
-      </div>
+      </section>
 
-      {/* --- JOURNEY STORYLINE SECTIONS --- */}
-      <div id="how-it-works" ref={storySectionRef} className="relative z-10 max-w-5xl mx-auto px-6 py-20 space-y-36">
-        
-        {/* Step 1: Assessment Creation */}
-        <motion.section 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={fadeInUpVariants}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center"
-        >
-          <div className="space-y-6">
-            <span className="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">Step 01</span>
-            <h2 className="text-section-title text-theme-primary">
-              Establish the baseline. Custom rubrics in seconds.
-            </h2>
-            <p className="text-body-large text-theme-secondary">
-              Define the target role expectations. Our system generates precise resume screening parameters, core roadmap highlights, and target rubrics tailored exactly for your vacancy.
-            </p>
-          </div>
-
-          <div className="p-8 rounded-2xl border border-subtle shadow-premium transition-all duration-300 hover:border-hover" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border-subtle)' }}>
-            <span className="text-xs font-bold text-blue-500 block uppercase tracking-widest mb-2">Role Input</span>
-            <h3 className="text-lg font-bold mb-6 text-theme-primary">Senior Backend Engineer</h3>
-            
-            <div className="space-y-4">
-              {[
-                { title: 'Resume Criteria', desc: 'Auto-maps Java, Spring Boot, AWS, & 5+ Years experience.' },
-                { title: 'Interview Roadmap', desc: 'Validates architectural design patterns & cloud scaling.' },
-                { title: 'Technical Rubric', desc: 'Sets specific evaluation thresholds for system latency & security.' },
-                { title: 'Evaluation Framework', desc: 'Prepares standardized questions tailored to target level.' }
-              ].map((item, idx) => (
-                <div key={idx} className="flex gap-3 items-start">
-                  <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-sm font-semibold text-theme-primary">{item.title}</h4>
-                    <p className="text-xs mt-0.5 text-theme-secondary">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.section>
-
-        {/* Step 2: Resume Intelligence */}
-        <motion.section 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={fadeInUpVariants}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center"
-        >
-          <div className="space-y-6 lg:order-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">Step 02</span>
-            <h2 className="text-section-title text-theme-primary">
-              Understand candidate depth before the interview begins.
-            </h2>
-            <p className="text-body-large text-theme-secondary">
-              We extract and structure capabilities cleanly. Skip raw text searching and identify core competencies immediately.
-            </p>
-          </div>
-
-          <div className="p-8 rounded-2xl border border-subtle shadow-premium lg:order-1 transition-all duration-300 hover:border-hover" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border-subtle)' }}>
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h3 className="text-lg font-bold text-theme-primary">Sarah Khan</h3>
-                <span className="text-xs text-theme-secondary">Applicant for Senior Backend Engineer</span>
-              </div>
-              <span className="text-xs font-bold px-2.5 py-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md border border-blue-500/20">
-                Parsed Profile
-              </span>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <span className="text-[10px] uppercase font-bold tracking-widest block mb-2 text-theme-tertiary">Extracted Core Skills</span>
-                <div className="flex flex-wrap gap-2">
-                  {['Java', 'Spring Boot', 'Kafka', 'AWS', 'Kubernetes'].map(skill => (
-                    <span key={skill} className="px-3 py-1 rounded-md text-xs font-medium text-theme-primary border border-subtle" style={{ backgroundColor: 'var(--color-bg-primary)', borderColor: 'var(--color-border-subtle)' }}>
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="pt-2 border-t border-subtle" style={{ borderColor: 'var(--color-border-subtle)' }}>
-                <span className="text-[10px] uppercase font-bold tracking-widest block mb-1 text-theme-tertiary">Experience Summary</span>
-                <p className="text-xs leading-relaxed text-theme-secondary">
-                  Led high-throughput microservices migration. Managed cloud scaling architectures handling up to 50k concurrent requests.
-                </p>
-              </div>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* Step 3: Adaptive Interview */}
-        <motion.section 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={fadeInUpVariants}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center"
-        >
-          <div className="space-y-6">
-            <span className="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">Step 03</span>
-            <h2 className="text-section-title text-theme-primary">
-              An AI interviewer that adapts in real time.
-            </h2>
-            <p className="text-body-large text-theme-secondary">
-              No standardized script. The simulator follows up dynamically on gaps or specific details mentioned by the candidate, probing their actual engineering limits.
-            </p>
-          </div>
-
-          <div className="p-8 rounded-2xl border border-subtle shadow-premium transition-all duration-300 hover:border-hover" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border-subtle)' }}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                <MessageSquare className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-theme-primary">Simulation Transcript</h4>
-                <p className="text-[10px] text-theme-secondary">Real-time dialog adjustments</p>
-              </div>
-            </div>
-
-            <div className="space-y-4 text-xs leading-relaxed">
-              <div className="p-3 rounded-lg border border-subtle" style={{ backgroundColor: 'var(--color-bg-primary)', borderColor: 'var(--color-border-subtle)' }}>
-                <span className="font-bold text-blue-600 dark:text-blue-400 block mb-1">AI Interviewer</span>
-                <p className="text-theme-primary">"Your projects mention migrating to Kafka for concurrency. How did you structure consumer offsets to prevent duplicate records?"</p>
-              </div>
-              <div className="p-3 rounded-lg border-l-2 pl-4 border-slate-400 dark:border-slate-700" style={{ backgroundColor: 'rgba(var(--color-bg-primary), 0.1)' }}>
-                <span className="font-bold block mb-1 text-theme-secondary">Candidate Response</span>
-                <p className="text-theme-secondary">"We configured manual committing on successful database writes and used idempotent business keys to deduplicate at the storage layer..."</p>
-              </div>
-              <div className="p-3 rounded-lg border border-subtle" style={{ backgroundColor: 'var(--color-bg-primary)', borderColor: 'var(--color-border-subtle)' }}>
-                <span className="font-bold text-blue-600 dark:text-blue-400 block mb-1">AI Interviewer (Adaptive Follow-up)</span>
-                <p className="text-theme-primary">"Manual offset commits can introduce high latency. How did you balance processing speeds with database transaction load during spike intervals?"</p>
-              </div>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* Step 4: Evidence Collection */}
-        <motion.section 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={fadeInUpVariants}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center"
-        >
-          <div className="space-y-6 lg:order-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">Step 04</span>
-            <h2 className="text-section-title text-theme-primary">
-              Gather structured evidence. Eliminate guesswork.
-            </h2>
-            <p className="text-body-large text-theme-secondary">
-              The engine structures responses against key performance criteria. Verify communication styles, technical accuracy, and STAR narrative validation logs.
-            </p>
-          </div>
-
-          <div className="p-8 rounded-2xl border border-subtle shadow-premium lg:order-1 transition-all duration-300 hover:border-hover" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border-subtle)' }}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-theme-primary">Evidence Analytics</h4>
-                <p className="text-[10px] text-theme-secondary">STAR & Communication Quality check</p>
-              </div>
-            </div>
-
-            <div className="space-y-3.5 text-xs">
-              {[
-                { title: 'Situation Validated', desc: 'Parsed clear infrastructure benchmarks & context scaling.', score: '100%' },
-                { title: 'Action Verified', desc: 'Detailed individual engineering architecture tasks.', score: '95%' },
-                { title: 'Technical Accuracy', desc: 'Correct mapping of distributed messaging queue properties.', score: '90%' },
-                { title: 'Communication Depth', desc: 'Articulate logical delivery with zero filler-phrase reliance.', score: '88%' }
-              ].map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center p-3 rounded-lg border border-subtle" style={{ backgroundColor: 'var(--color-bg-primary)', borderColor: 'var(--color-border-subtle)' }}>
-                  <div>
-                    <h5 className="font-semibold text-theme-primary">{item.title}</h5>
-                    <p className="text-[10px] text-theme-secondary mt-0.5">{item.desc}</p>
-                  </div>
-                  <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{item.score}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.section>
-
-        {/* Step 5: Hiring Recommendation (Climax) */}
-        <motion.section 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={fadeInUpVariants}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center"
-        >
-          <div className="space-y-6">
-            <span className="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">Step 05</span>
-            <h2 className="text-section-title text-theme-primary">
-              Synthesized hiring reports. A clear recommendation.
-            </h2>
-            <p className="text-body-large text-theme-secondary">
-              No dashboards to configure. Receive high-level scorecard insights highlighting specific strengths and development areas immediately.
-            </p>
-          </div>
-
-          <div className="p-8 rounded-2xl border border-subtle shadow-premium transition-all duration-300 hover:border-hover" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border-subtle)' }}>
-            <div className="flex justify-between items-center pb-5 mb-5 border-b border-subtle" style={{ borderColor: 'var(--color-border-subtle)' }}>
-              <div>
-                <h3 className="text-base font-bold text-theme-primary">Executive Evaluation</h3>
-                <p className="text-[10px] text-theme-secondary">Recruiter reference file #4092</p>
-              </div>
-              <div className="text-right">
-                <span className="px-3 py-1 text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md border border-blue-500/20">
-                  Strong Hire
-                </span>
-                <span className="block text-sm font-extrabold mt-1 text-theme-primary">92% Fit</span>
-              </div>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-widest block mb-2 text-theme-tertiary">Verified Strengths</span>
-                <ul className="space-y-1.5 text-theme-primary">
-                  <li>✓ System Design & Concurrency Handling</li>
-                  <li>✓ Leadership & Technical Strategy Mentoring</li>
-                  <li>✓ Communication & Structural Explanations</li>
-                </ul>
-              </div>
-              <div className="pt-4 border-t border-subtle" style={{ borderColor: 'var(--color-border-subtle)' }}>
-                <span className="text-[10px] font-bold uppercase tracking-widest block mb-2 text-theme-tertiary">Development Areas</span>
-                <ul className="space-y-1.5 text-theme-secondary">
-                  <li>• Cloud Cost Optimization (lacks active budget control experience)</li>
-                  <li>• Distributed Tracing (minimal deployment depth with OpenTelemetry)</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* Step 6: Enterprise Capabilities */}
-        <motion.section 
-          id="enterprise"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={fadeInUpVariants}
-          className="border-t border-subtle pt-24 space-y-16"
-          style={{ borderColor: 'var(--color-border-subtle)' }}
-        >
-          <div className="text-center max-w-2xl mx-auto space-y-4">
-            <span className="text-xs font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">Scale Securely</span>
-            <h2 className="text-section-title text-theme-primary">
-              Built for engineering and recruiting organizations.
-            </h2>
-            <p className="text-body-large text-theme-secondary">
-              Enterprise controls to streamline high-volume talent pipelines while maintaining compliance.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              { icon: Users, title: 'Team Workspaces', desc: 'Coordinate assessments and share candidates across hiring groups.' },
-              { icon: Layers, title: 'Role Templates', desc: 'Standardize expectations across departments for rapid hiring execution.' },
-              { icon: Sliders, title: 'Candidate Pipelines', desc: 'Directly monitor candidate progressions from start to final recommendation.' },
-              { icon: Database, title: 'Audit Trails', desc: 'Track rubric updates and interview outcomes securely.' },
-              { icon: History, title: 'Hiring Collaboration', desc: 'Leave collaborative internal comments and scoring peer reviews.' },
-              { icon: Eye, title: 'Department Analytics', desc: 'Examine pass-through metrics and recruiter throughput profiles.' }
-            ].map((item, idx) => (
-              <div key={idx} className="p-6 rounded-xl border border-subtle transition-all duration-300 hover:border-hover" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border-subtle)' }}>
-                <item.icon className="w-5 h-5 text-blue-600 mb-4" />
-                <h4 className="text-sm font-bold mb-2 text-theme-primary">{item.title}</h4>
-                <p className="text-xs leading-relaxed text-theme-secondary">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </motion.section>
-
-      </div>
-
-      {/* --- CLOSING CTA --- */}
-      <section className="relative z-10 border-t border-subtle" style={{ borderColor: 'var(--color-border-subtle)', backgroundColor: 'var(--color-bg-secondary)' }}>
-        <div className="max-w-4xl mx-auto px-6 py-28 text-center space-y-8">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-theme-primary">
-            Ready to make better hiring decisions?
+      <section className="max-w-6xl mx-auto px-6 py-20 md:py-24">
+        <div className="max-w-2xl mb-10">
+          <span className="text-xs font-bold uppercase tracking-widest text-blue-400 block mb-3">Architecture</span>
+          <h2 className="text-3xl md:text-4xl font-bold text-theme-primary tracking-tight">
+            The platform follows the agentic interview architecture your team described.
           </h2>
-          <p className="text-sm max-w-lg mx-auto text-theme-secondary">
-            Initiate assessment screening sessions today. Standardize evaluation variables across all prospective applicants.
+          <p className="text-sm leading-7 text-theme-secondary mt-4">
+            It starts with resume and JD parsing, computes transparent gap analysis, creates an interview roadmap, adapts through specialized interview agents, and ends with ranking and reports.
           </p>
-          <div className="pt-4">
-            <Link 
-              to="/upload" 
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-3.5 px-8 rounded-lg shadow-lg hover:shadow-blue-500/10 transition-all"
-            >
-              <span>Get Started Immediately</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {platformSteps.map((step) => (
+            <div key={step.title} className="card-premium p-6">
+              <step.icon className="w-5 h-5 text-blue-400 mb-4" />
+              <h3 className="text-base font-bold text-theme-primary mb-2">{step.title}</h3>
+              <p className="text-xs leading-6 text-theme-secondary">{step.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="max-w-6xl mx-auto px-6 pb-24">
+        <div className="card-premium p-8 md:p-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-theme-tertiary block mb-3">Next action</span>
+            <h2 className="text-3xl font-bold text-theme-primary tracking-tight">Start with the recruiter workspace.</h2>
+            <p className="text-sm text-theme-secondary mt-3 max-w-2xl">
+              The product is recruiter-centered, but the student path is available for practice and readiness measurement.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+            <Link to="/recruiter/create" className="btn-base btn-primary px-6 py-3 gap-2">
+              <span>Create Assessment</span>
               <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link to="/student" className="btn-base btn-secondary px-6 py-3">
+              Student Path
             </Link>
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function ValueCard({ icon: Icon, title, body }: { icon: any; title: string; body: string }) {
+  return (
+    <div className="flex gap-4">
+      <div className="w-10 h-10 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+        <Icon className="w-5 h-5 text-blue-400" />
+      </div>
+      <div>
+        <h3 className="text-sm font-bold text-theme-primary mb-1">{title}</h3>
+        <p className="text-xs leading-6 text-theme-secondary">{body}</p>
+      </div>
+    </div>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-subtle p-3 text-center" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
+      <span className="text-[10px] uppercase tracking-widest text-theme-tertiary block mb-1">{label}</span>
+      <span className="text-lg font-bold text-theme-primary">{value}</span>
     </div>
   );
 }

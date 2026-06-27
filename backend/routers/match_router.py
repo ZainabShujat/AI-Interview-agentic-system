@@ -20,10 +20,15 @@ async def match_resume_jd(payload: schemas.MatchRequest, db: Session = Depends(g
         raise HTTPException(status_code=404, detail="Job Description record not found.")
         
     try:
-        # Match using Gemini Match Agent
-        match_result = gemini_service.match_resume_and_jd(
+        # Match deterministically in backend code. LLMs may explain results elsewhere,
+        # but the scoring and skill comparison stay transparent.
+        match_result = gemini_service.deterministic_match_resume_and_jd(
             resume.parsed_json,
             jd.parsed_json
+        )
+        match_result["assessmentBlueprint"] = gemini_service.generate_assessment_blueprint(
+            jd.parsed_json,
+            match_result
         )
         return match_result
         

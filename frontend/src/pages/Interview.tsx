@@ -20,6 +20,7 @@ export default function Interview() {
   const [category, setCategory] = useState('Technical');
   const [answerText, setAnswerText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Camera feed states
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -217,50 +218,25 @@ export default function Interview() {
     }
 
     setLoading(true);
+    setError('');
     const signals = calculateConfidenceSignals();
 
     try {
-      let nextQuestionRes = {
-        question: 'Explain how you would handle schema migrations in a distributed multi-tenant database.',
-        category: 'Scenario',
-        finished: false,
-      };
-
-      try {
-        const res = await axios.post('/api/interview/answer', {
-          interview_id: interviewId || 'mock-interview-456',
-          question_text: questionText,
-          category,
-          answer_text: answerText,
-          signals,
-        });
-        nextQuestionRes = res.data;
-      } catch (err) {
-        console.warn('Backend connection failed. Advancing with mockup route.', err);
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        if (currentQuestionIndex === 0) {
-          nextQuestionRes = {
-            question: 'Tell me about a time when you had to advocate for code quality over speed of delivery.',
-            category: 'Behavioral',
-            finished: false,
-          };
-        } else if (currentQuestionIndex === 1) {
-          nextQuestionRes = {
-            question: 'How do you handle conflict or architectural disagreements with senior staff developers?',
-            category: 'Leadership',
-            finished: false,
-          };
-        } else {
-          nextQuestionRes = {
-            question: '',
-            category: '',
-            finished: true,
-          };
-        }
+      if (!interviewId) {
+        throw new Error('No active interview session was found. Start from the student or recruiter assessment flow.');
       }
 
+      const res = await axios.post('/api/interview/answer', {
+        interview_id: interviewId,
+        question_text: questionText,
+        category,
+        answer_text: answerText,
+        signals,
+      });
+      const nextQuestionRes = res.data;
+
       if (nextQuestionRes.finished || currentQuestionIndex >= totalQuestions - 1) {
-        navigate('/report');
+        navigate('/student/leaderboard');
       } else {
         setQuestionText(nextQuestionRes.question);
         setCategory(nextQuestionRes.category);
@@ -268,11 +244,7 @@ export default function Interview() {
       }
     } catch (err) {
       console.error(err);
-      if (currentQuestionIndex >= totalQuestions - 1) {
-        navigate('/report');
-      } else {
-        setCurrentQuestionIndex((prev) => prev + 1);
-      }
+      setError(err instanceof Error ? err.message : 'Could not submit response. Check the backend/API key and try again.');
     } finally {
       setLoading(false);
     }
@@ -461,6 +433,11 @@ export default function Interview() {
                       </div>
 
                       {/* Action Buttons Panel */}
+                      {error && (
+                        <div className="rounded-lg border px-4 py-3 text-xs" style={{ borderColor: 'rgba(244, 63, 94, 0.3)', backgroundColor: 'rgba(244, 63, 94, 0.08)', color: 'var(--color-accent-coral)' }}>
+                          {error}
+                        </div>
+                      )}
                       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                         <button
                           type="button"

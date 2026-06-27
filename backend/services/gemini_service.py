@@ -1,63 +1,381 @@
 import os
 import json
+import re
+import urllib.request
+import urllib.error
 import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL_FALLBACKS = [
+    model.strip()
+    for model in os.getenv("GEMINI_MODEL_FALLBACKS", "gemini-2.5-flash,gemini-flash-latest,gemini-2.0-flash").split(",")
+    if model.strip()
+]
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    print("Gemini: API Key loaded and configured successfully")
+    print(f"Gemini: API Key loaded. Primary model: {GEMINI_MODEL}")
 else:
     print("Gemini: API Key missing. Running in Mock Agent fallback mode.")
 
 def call_gemini_json(prompt: str) -> dict:
-    """Helper to query Gemini 1.5 Flash and request a JSON response."""
+    """Helper to query Gemini and request a JSON response."""
     if not GEMINI_API_KEY:
         raise ValueError("API Key missing")
+
+    model_candidates = []
+    for model_name in [GEMINI_MODEL, *GEMINI_MODEL_FALLBACKS]:
+        if model_name and model_name not in model_candidates:
+            model_candidates.append(model_name)
+
+    last_error = None
+    for model_name in model_candidates:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(
+                prompt,
+                generation_config={"response_mime_type": "application/json"},
+                request_options={"timeout": 30}
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            last_error = e
+            print(f"Gemini API call failed with model {model_name}: {e}.")
+
+    raise RuntimeError(f"Gemini API call failed for all configured models: {model_candidates}. Last error: {last_error}")
+
+def extract_urls(text: str) -> list:
+    urls = re.findall(r"https?://[^\s<>)\]]+", text or "")
+    cleaned = []
+    for url in urls:
+        url = url.rstrip(".,;:'\"")
+        if url not in cleaned:
+            cleaned.append(url)
+    return cleaned[:8]
+
+def fetch_public_link_evidence(urls: list) -> list:
+    evidence = []
+    for url in urls[:5]:
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "HireIntelResumeVerifier/1.0",
+                    "Accept": "text/html,text/plain,application/json;q=0.9,*/*;q=0.8",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=6) as response:
+                content_type = response.headers.get("content-type", "")
+                raw = response.read(120000).decode("utf-8", errors="ignore")
+
+            text = raw
+            if "html" in content_type:
+                text = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", text)
+                text = re.sub(r"(?s)<[^>]+>", " ", text)
+            text = re.sub(r"\s+", " ", text).strip()
+            evidence.append({
+                "url": url,
+                "status": "fetched",
+                "content_type": content_type,
+                "text_excerpt": text[:5000]
+            })
+        except Exception as e:
+            evidence.append({
+                "url": url,
+                "status": "unavailable",
+                "error": str(e)[:240]
+            })
+    return evidence
+
+def normalize_resume_parsed(data: dict) -> dict:
+    if not isinstance(data, dict):
+        data = {}
+    
+    # Root level fields
+    string_fields = [
+        "candidate_name", "headline", "email", "phone", "location",
+        "linkedin", "github", "portfolio", "website", "summary",
+        "career_level", "primary_domain"
+    ]
+    for field in string_fields:
+        data.setdefault(field, None)
         
+    data.setdefault("estimated_experience_years", 0.0)
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
-        )
-        return json.loads(response.text)
-    except Exception as e:
-        print(f"Gemini API call failed: {e}. Falling back to simulation logic.")
-        raise e
+        data["estimated_experience_years"] = float(data["estimated_experience_years"] or 0)
+    except (ValueError, TypeError):
+        data["estimated_experience_years"] = 0.0
+
+    list_fields = [
+        "skills", "technical_skills", "soft_skills", "programming_languages",
+        "frameworks", "databases", "cloud_platforms", "tools", "certifications",
+        "achievements", "languages", "domain_experience", "top_strengths", "potential_concerns"
+    ]
+    for field in list_fields:
+        if not isinstance(data.get(field), list):
+            data[field] = []
+        else:
+            data[field] = [str(item) for item in data[field] if item is not None]
+
+    # Projects
+    raw_projects = data.get("projects")
+    if not isinstance(raw_projects, list):
+        raw_projects = []
+    projects = []
+    for proj in raw_projects:
+        if not isinstance(proj, dict):
+            continue
+        p = {}
+        p["title"] = proj.get("title")
+        p["description"] = proj.get("description")
+        
+        # Support fallback tool mapping
+        p_tech = proj.get("technologies") or proj.get("tools")
+        if not isinstance(p_tech, list):
+            p_tech = []
+        p["technologies"] = [str(t) for t in p_tech if t is not None]
+        
+        p["github"] = proj.get("github")
+        p["demo"] = proj.get("demo")
+        
+        p_contrib = proj.get("contributions")
+        if not isinstance(p_contrib, list):
+            p_contrib = []
+        p["contributions"] = [str(c) for c in p_contrib if c is not None]
+        projects.append(p)
+    data["projects"] = projects
+
+    # Experience
+    raw_exp = data.get("experience")
+    if not isinstance(raw_exp, list):
+        raw_exp = []
+    experience = []
+    for exp in raw_exp:
+        if not isinstance(exp, dict):
+            continue
+        e = {}
+        e["title"] = exp.get("title")
+        e["company"] = exp.get("company")
+        e["employment_type"] = exp.get("employment_type")
+        e["duration"] = exp.get("duration")
+        
+        e_resp = exp.get("responsibilities")
+        if not isinstance(e_resp, list):
+            e_resp = []
+        e["responsibilities"] = [str(r) for r in e_resp if r is not None]
+        
+        e_ach = exp.get("achievements")
+        if not isinstance(e_ach, list):
+            e_ach = []
+        e["achievements"] = [str(a) for a in e_ach if a is not None]
+        
+        e_tech = exp.get("technologies")
+        if not isinstance(e_tech, list):
+            e_tech = []
+        e["technologies"] = [str(t) for t in e_tech if t is not None]
+        experience.append(e)
+    data["experience"] = experience
+
+    # Education
+    raw_edu = data.get("education")
+    if not isinstance(raw_edu, list):
+        raw_edu = []
+    education = []
+    for edu in raw_edu:
+        if not isinstance(edu, dict):
+            continue
+        ed = {}
+        ed["degree"] = edu.get("degree")
+        ed["branch"] = edu.get("branch")
+        ed["institution"] = edu.get("institution")
+        ed["year"] = str(edu.get("year")) if edu.get("year") is not None else None
+        ed["cgpa"] = str(edu.get("cgpa")) if edu.get("cgpa") is not None else None
+        education.append(ed)
+    data["education"] = education
+
+    # Internships
+    raw_intern = data.get("internships")
+    if not isinstance(raw_intern, list):
+        raw_intern = []
+    internships = []
+    for intern in raw_intern:
+        if not isinstance(intern, dict):
+            continue
+        i = {}
+        i["company"] = intern.get("company")
+        i["role"] = intern.get("role")
+        i["duration"] = intern.get("duration")
+        i["summary"] = intern.get("summary")
+        internships.append(i)
+    data["internships"] = internships
+
+    # Links
+    raw_links = data.get("links")
+    if not isinstance(raw_links, list):
+        raw_links = []
+    links = []
+    for link in raw_links:
+        if not isinstance(link, dict):
+            continue
+        lk = {}
+        lk["url"] = link.get("url")
+        lk["type"] = link.get("type")
+        
+        verified_val = link.get("verified")
+        if verified_val is None:
+            verified_val = True
+        lk["verified"] = bool(verified_val)
+        
+        lk["summary"] = link.get("summary")
+        
+        lk_skills = link.get("skills_found")
+        if not isinstance(lk_skills, list):
+            lk_skills = []
+        lk["skills_found"] = [str(s) for s in lk_skills if s is not None]
+        
+        lk_projs = link.get("projects_found")
+        if not isinstance(lk_projs, list):
+            lk_projs = []
+        lk["projects_found"] = [str(p) for p in lk_projs if p is not None]
+        
+        links.append(lk)
+    data["links"] = links
+
+    return data
 
 # --- 1. Resume Parser Agent ---
 def parse_resume(raw_text: str) -> dict:
     if not GEMINI_API_KEY:
         return get_mock_resume_parsed()
-        
+
+    resume_links = extract_urls(raw_text)
+    link_evidence = fetch_public_link_evidence(resume_links) if resume_links else []
+
     prompt = f"""
-    You are an expert recruiter parsing a candidate resume.
-    Extract the following fields from the raw text:
-    - Skills (list of tech & soft skills)
-    - Projects (list of projects with description and tools used)
-    - Experience (roles, company, duration, achievements)
-    - Education (degrees, school, graduation year)
-    - Certifications (list of certificates)
+You are Resume Intelligence Agent.
 
-    Resume Raw Text:
-    {raw_text}
+Analyze the candidate's resume and extract structured information.
 
-    Return JSON matching this schema:
+Use the supplied public link evidence only to verify or enrich information.
+Never invent information.
+
+Rules:
+- Return ONLY valid JSON.
+- Do NOT include markdown.
+- Do NOT include explanations.
+- Do NOT omit any key.
+- If information is unavailable, return null or [].
+
+Resume:
+{raw_text}
+
+Verified Link Evidence:
+{json.dumps(link_evidence, separators=(",", ":"))}
+
+Return JSON matching exactly this schema:
+
+{{
+  "candidate_name": "",
+  "headline": "",
+  "email": "",
+  "phone": "",
+  "location": "",
+
+  "linkedin": "",
+  "github": "",
+  "portfolio": "",
+  "website": "",
+
+  "summary": "",
+
+  "career_level": "",
+  "estimated_experience_years": 0,
+  "primary_domain": "",
+
+  "skills": [],
+  "technical_skills": [],
+  "soft_skills": [],
+  "programming_languages": [],
+  "frameworks": [],
+  "databases": [],
+  "cloud_platforms": [],
+  "tools": [],
+
+  "projects": [
     {{
-      "skills": ["skill1", "skill2"],
-      "projects": [{{"title": "", "description": "", "tools": []}}],
-      "experience": [{{"title": "", "company": "", "duration": "", "summary": ""}}],
-      "education": [{{"degree": "", "school": "", "year": ""}}],
-      "certifications": ["cert1"]
+      "title": "",
+      "description": "",
+      "technologies": [],
+      "github": "",
+      "demo": "",
+      "contributions": []
     }}
-    """
+  ],
+
+  "experience": [
+    {{
+      "title": "",
+      "company": "",
+      "employment_type": "",
+      "duration": "",
+      "responsibilities": [],
+      "achievements": [],
+      "technologies": []
+    }}
+  ],
+
+  "education": [
+    {{
+      "degree": "",
+      "branch": "",
+      "institution": "",
+      "year": "",
+      "cgpa": ""
+    }}
+  ],
+
+  "certifications": [],
+
+  "internships": [
+    {{
+      "company": "",
+      "role": "",
+      "duration": "",
+      "summary": ""
+    }}
+  ],
+
+  "achievements": [],
+
+  "languages": [],
+
+  "domain_experience": [],
+
+  "top_strengths": [],
+
+  "potential_concerns": [],
+
+  "links": [
+    {{
+      "url": "",
+      "type": "",
+      "verified": true,
+      "summary": "",
+      "skills_found": [],
+      "projects_found": []
+    }}
+  ]
+}}
+"""
+
     try:
-        return call_gemini_json(prompt)
-    except Exception:
-        return get_mock_resume_parsed()
+        raw_res = call_gemini_json(prompt)
+        return normalize_resume_parsed(raw_res)
+    except Exception as e:
+        raise RuntimeError(f"Resume Agent failed while using Gemini API: {e}") from e
 
 # --- 2. JD Parser Agent ---
 def parse_jd(raw_text: str) -> dict:
@@ -72,6 +390,11 @@ def parse_jd(raw_text: str) -> dict:
     - Preferred Skills (nice to have)
     - Target Industry
     - Seniority Level (Junior, Mid, Senior, Lead, Director)
+    - Experience expectations
+    - Responsibilities
+    - Domain
+    - Leadership expectations
+    - Communication expectations
 
     Job Description Raw Text:
     {raw_text}
@@ -82,74 +405,179 @@ def parse_jd(raw_text: str) -> dict:
       "required_skills": ["skill1", "skill2"],
       "preferred_skills": ["skill1"],
       "industry": "Finance / SaaS",
-      "seniority": "Senior"
+      "seniority": "Senior",
+      "experience": "5+ years",
+      "responsibilities": ["responsibility1"],
+      "domain": "Payments",
+      "leadership_expectations": ["Mentors engineers"],
+      "communication_expectations": ["Explains trade-offs clearly"]
     }}
     """
     try:
         return call_gemini_json(prompt)
-    except Exception:
-        return get_mock_jd_parsed()
+    except Exception as e:
+        raise RuntimeError(f"JD Agent failed while using Gemini API: {e}") from e
 
 # --- 3. Match Agent ---
 def match_resume_and_jd(resume_parsed: dict, jd_parsed: dict) -> dict:
-    if not GEMINI_API_KEY:
-        return get_mock_match_analysis(resume_parsed, jd_parsed)
-        
-    prompt = f"""
-    Compare the candidate's parsed Resume against the parsed Job Description (JD).
-    
-    Candidate Resume Data:
-    {json.dumps(resume_parsed, indent=2)}
-    
-    Job Description Data:
-    {json.dumps(jd_parsed, indent=2)}
-    
-    Evaluate the following:
-    1. Overall Match Score (0 to 100). Be realistic.
-    2. Strengths: 3-4 key alignment items showing where the candidate matches requirements well.
-    3. Gaps: 2-3 development gaps where candidate lacks specified required or preferred skills. Include specific descriptions of the gaps.
-    4. Readiness Details: A breakdown score (0-100) for 5 dimensions:
-       - Core Coding & Architecture
-       - System Design & Scalability
-       - Team Leadership & Culture
-       - Domain Experience
-       - Tooling & CI/CD Pipelines
-    5. Matched Skills: list of core skills matched from requirements.
-    6. Missing Skills: list of required/preferred skills missing in the resume.
-    7. Evidence: list of mappings, showing which skills were found in which projects/experience, or explicitly not found.
-       
-    Return JSON matching this schema:
-    {{
-      "matchScore": 82,
-      "roleInfo": {{
-        "title": "Target Role Title",
-        "industry": "Target Industry",
-        "seniority": "Target Seniority"
-      }},
-      "readinessDetails": [
-        {{"name": "Core Coding & Architecture", "score": 80}},
-        {{"name": "System Design & Scalability", "score": 75}},
-        {{"name": "Team Leadership & Culture", "score": 90}},
-        {{"name": "Domain Experience", "score": 70}},
-        {{"name": "Tooling & CI/CD Pipelines", "score": 85}}
-      ],
-      "strengths": ["Strength 1 text", "Strength 2 text"],
-      "gaps": [
-        {{"skill": "Skill Name", "description": "Why it is a gap and what is missing"}}
-      ],
-      "matched_skills": ["SkillA", "SkillB"],
-      "missing_skills": ["SkillC"],
-      "evidence": [
-        {{"skill": "SkillA", "status": "Found", "source": "Found in Experience: Software Engineer at Stripe"}},
-        {{"skill": "SkillC", "status": "Not Found", "source": "Not found in resume"}}
-      ]
-    }}
-    """
-    try:
-        return call_gemini_json(prompt)
-    except Exception:
-        return get_mock_match_analysis(resume_parsed, jd_parsed)
+    return deterministic_match_resume_and_jd(resume_parsed, jd_parsed)
 
+def _normalize_skill(skill: str) -> str:
+    return " ".join(str(skill).lower().replace("-", " ").replace("_", " ").split())
+
+def _display_skill(skill: str) -> str:
+    cleaned = " ".join(str(skill).replace("_", " ").split())
+    return cleaned.upper() if cleaned.lower() in {"aws", "sql", "ci/cd"} else cleaned
+
+def _collect_resume_skills(resume_parsed: dict) -> set:
+    skills = set()
+    
+    # 1. Direct skills lists
+    skill_fields = [
+        "skills",
+        "technical_skills",
+        "programming_languages",
+        "frameworks",
+        "databases",
+        "cloud_platforms",
+        "tools",
+        "certifications"
+    ]
+    for field in skill_fields:
+        for val in resume_parsed.get(field, []) or []:
+            skills.add(_normalize_skill(val))
+            
+    # 2. Experience technologies
+    for exp in resume_parsed.get("experience", []) or []:
+        for tech in exp.get("technologies", []) or []:
+            skills.add(_normalize_skill(tech))
+            
+    # 3. Project technologies
+    for proj in resume_parsed.get("projects", []) or []:
+        for tech in (proj.get("technologies") or proj.get("tools") or []):
+            skills.add(_normalize_skill(tech))
+            
+    # 4. Link skills
+    for link in resume_parsed.get("links", []) or []:
+        for skill in link.get("skills_found", []) or []:
+            skills.add(_normalize_skill(skill))
+            
+    return {skill for skill in skills if skill}
+
+def _collect_jd_required(jd_parsed: dict) -> set:
+    return {_normalize_skill(skill) for skill in (jd_parsed.get("required_skills", []) or []) if skill}
+
+def _collect_jd_preferred(jd_parsed: dict) -> set:
+    return {_normalize_skill(skill) for skill in (jd_parsed.get("preferred_skills", []) or []) if skill}
+
+def deterministic_match_resume_and_jd(resume_parsed: dict, jd_parsed: dict) -> dict:
+    """Transparent match model: no LLM scoring, only structured JSON comparison."""
+    resume_skills = _collect_resume_skills(resume_parsed)
+    required = _collect_jd_required(jd_parsed)
+    preferred = _collect_jd_preferred(jd_parsed)
+    jd_skills = required | preferred
+
+    matched_required = required & resume_skills
+    matched_preferred = preferred & resume_skills
+    missing_required = required - resume_skills
+    missing_preferred = preferred - resume_skills
+    additional = resume_skills - jd_skills
+
+    required_score = (len(matched_required) / len(required) * 70) if required else 70
+    preferred_score = (len(matched_preferred) / len(preferred) * 20) if preferred else 20
+
+    domain_values = resume_parsed.get("domain_experience", []) or []
+    domain_text = " ".join(str(item).lower() for item in domain_values)
+    jd_domain = str(jd_parsed.get("domain") or jd_parsed.get("industry") or "").lower()
+    domain_score = 10 if jd_domain and any(part in domain_text for part in jd_domain.split()) else 0
+    match_score = min(100, round(required_score + preferred_score + domain_score))
+
+    evidence = []
+    for skill in sorted(jd_skills):
+        found = skill in resume_skills
+        evidence.append({
+            "skill": _display_skill(skill),
+            "status": "Found" if found else "Not Found",
+            "source": "Detected in structured resume skills, project tools, or certifications." if found else "Not present in structured resume profile."
+        })
+
+    gaps = [
+        {
+            "skill": _display_skill(skill),
+            "description": "Required capability missing from the structured resume profile."
+        }
+        for skill in sorted(missing_required)
+    ] + [
+        {
+            "skill": _display_skill(skill),
+            "description": "Preferred capability not found; validate during assessment if relevant."
+        }
+        for skill in sorted(missing_preferred)
+    ]
+
+    strengths = [
+        f"Matches {len(matched_required)} of {len(required)} required skills."
+    ]
+    if matched_preferred:
+        strengths.append(f"Also covers preferred skills: {', '.join(_display_skill(s) for s in sorted(matched_preferred))}.")
+    if additional:
+        strengths.append(f"Brings adjacent capabilities: {', '.join(_display_skill(s) for s in sorted(additional)[:6])}.")
+
+    readiness_details = [
+        {"name": "Required Skill Coverage", "score": round(len(matched_required) / len(required) * 100) if required else 100},
+        {"name": "Preferred Skill Coverage", "score": round(len(matched_preferred) / len(preferred) * 100) if preferred else 100},
+        {"name": "Domain Alignment", "score": 100 if domain_score else 55},
+        {"name": "Ramp Risk", "score": max(35, 100 - (len(missing_required) * 18) - (len(missing_preferred) * 7))},
+        {"name": "Assessment Priority", "score": min(100, 55 + (len(missing_required) * 12) + (len(missing_preferred) * 5))}
+    ]
+
+    return {
+        "matchScore": match_score,
+        "calculation": {
+            "requiredWeight": 70,
+            "preferredWeight": 20,
+            "domainWeight": 10,
+            "requiredMatched": len(matched_required),
+            "requiredTotal": len(required),
+            "preferredMatched": len(matched_preferred),
+            "preferredTotal": len(preferred)
+        },
+        "roleInfo": {
+            "title": jd_parsed.get("title") or jd_parsed.get("role") or "Target Role",
+            "industry": jd_parsed.get("industry", "Not specified"),
+            "seniority": jd_parsed.get("seniority", "Not specified")
+        },
+        "readinessDetails": readiness_details,
+        "strengths": strengths,
+        "gaps": gaps,
+        "matched_skills": [_display_skill(skill) for skill in sorted(matched_required | matched_preferred)],
+        "missing_skills": [_display_skill(skill) for skill in sorted(missing_required | missing_preferred)],
+        "additional_skills": [_display_skill(skill) for skill in sorted(additional)],
+        "evidence": evidence
+    }
+
+def generate_assessment_blueprint(jd_parsed: dict, match_analysis: dict) -> dict:
+    missing_count = len(match_analysis.get("missing_skills", []) or [])
+    seniority = str(jd_parsed.get("seniority", "")).lower()
+    leadership_questions = 2 if any(key in seniority for key in ["senior", "lead", "director", "manager"]) else 1
+    technical_questions = 4 if missing_count >= 3 else 3
+    scenario_questions = 3 if missing_count >= 2 else 2
+    behavioral_questions = 2
+    resume_validation = 2
+    total_questions = resume_validation + technical_questions + scenario_questions + behavioral_questions + leadership_questions
+
+    return {
+        "modules": [
+            {"name": "Resume Validation", "questions": resume_validation, "focus": "Verify claimed experience, ownership, and project evidence."},
+            {"name": "Technical Questions", "questions": technical_questions, "focus": "Probe required skills and missing competencies."},
+            {"name": "Scenario Questions", "questions": scenario_questions, "focus": "Evaluate applied judgment in realistic role situations."},
+            {"name": "Behavioral Questions", "questions": behavioral_questions, "focus": "Assess collaboration, accountability, and operating style."},
+            {"name": "Leadership Questions", "questions": leadership_questions, "focus": "Validate mentoring, decision-making, and stakeholder communication."}
+        ],
+        "estimatedDurationMinutes": max(30, total_questions * 4),
+        "priorityGaps": match_analysis.get("missing_skills", [])[:5],
+        "role": jd_parsed.get("title") or jd_parsed.get("role") or "Target Role"
+    }
 # --- 4. Interview Planner Agent ---
 def plan_interview_roadmap(resume_parsed: dict, jd_parsed: dict, match_analysis: dict) -> dict:
     if not GEMINI_API_KEY:
@@ -218,12 +646,8 @@ def plan_interview_roadmap(resume_parsed: dict, jd_parsed: dict, match_analysis:
     """
     try:
         return call_gemini_json(prompt)
-    except Exception:
-        return {
-          "Technical": 2,
-          "Scenario": 1,
-          "Behavioral": 1
-        }
+    except Exception as e:
+        raise RuntimeError(f"Interview Planner Agent failed while using Gemini API: {e}") from e
 
 # --- 5. Interview Agent (Adaptive Question Formulation) ---
 def generate_question(resume: dict, jd: dict, history: list, category: str, difficulty: str, memory: dict = None) -> str:
@@ -280,9 +704,12 @@ def generate_question(resume: dict, jd: dict, history: list, category: str, diff
     """
     try:
         res = call_gemini_json(prompt)
-        return res.get("question", get_mock_question(category, difficulty, offset=len(history) if history else 0))
-    except Exception:
-        return get_mock_question(category, difficulty, offset=len(history) if history else 0)
+        question = res.get("question")
+        if not question:
+            raise RuntimeError("Gemini response did not include a question field.")
+        return question
+    except Exception as e:
+        raise RuntimeError(f"Question Generator Agent failed while using Gemini API: {e}") from e
 
 # --- 6. Judge Agent ---
 def judge_answer(question: str, answer: str, signals: dict) -> dict:
@@ -334,8 +761,8 @@ def judge_answer(question: str, answer: str, signals: dict) -> dict:
     """
     try:
         return call_gemini_json(prompt)
-    except Exception:
-        return get_mock_evaluation(question, answer, signals)
+    except Exception as e:
+        raise RuntimeError(f"Judge Agent failed while using Gemini API: {e}") from e
 
 # --- 7. Memory Agent ---
 def update_memory(current_memory: dict, question: str, answer: str, evaluation: dict, jd_parsed: dict = None) -> dict:
@@ -736,37 +1163,93 @@ def generate_final_report(all_qa: list, memory: dict) -> dict:
         report_json["communicationProfile"] = compile_communication_profile(all_qa)
         report_json["all_qa"] = all_qa
         return report_json
-    except Exception:
-        return get_mock_report_final(all_qa, memory)
+    except Exception as e:
+        raise RuntimeError(f"Report Agent failed while using Gemini API: {e}") from e
 
 # --- MOCK FALLBACKS ---
 
 def get_mock_resume_parsed() -> dict:
     return {
-      "skills": ["React", "TypeScript", "JavaScript", "Python", "FastAPI", "SQL", "Docker", "Git", "AWS"],
-      "projects": [
-        {
-          "title": "E-Commerce Microservices",
-          "description": "Designed custom order dispatch queue processing 10k orders/day.",
-          "tools": ["Python", "FastAPI", "PostgreSQL", "Docker"]
-        }
-      ],
-      "experience": [
-        {
-          "title": "Software Engineer",
-          "company": "SaaS Ventures Ltd",
-          "duration": "2024 - Present",
-          "summary": "Maintained frontends in React and TypeScript while supporting python microservice features."
-        }
-      ],
-      "education": [
-        {
-          "degree": "B.S. Computer Science",
-          "school": "State Tech University",
-          "year": "2023"
-        }
-      ],
-      "certifications": ["AWS Certified Solutions Architect"]
+        "candidate_name": "John Doe",
+        "headline": "Senior Software Engineer | Backend & Cloud Systems",
+        "email": "johndoe@example.com",
+        "phone": "+1-555-0199",
+        "location": "San Francisco, CA",
+        "linkedin": "https://linkedin.com/in/johndoe-mock",
+        "github": "https://github.com/johndoe-mock",
+        "portfolio": "https://johndoe.dev",
+        "website": "https://johndoe.dev",
+        "summary": "Experienced software engineer with 5+ years of expertise in Python, FastAPI, Docker, and AWS. Passionate about building highly scalable distributed services and robust APIs.",
+        "career_level": "Senior",
+        "estimated_experience_years": 5.5,
+        "primary_domain": "Backend Systems & Cloud Engineering",
+        "skills": ["React", "TypeScript", "JavaScript", "Python", "FastAPI", "PostgreSQL", "Docker", "Git", "AWS"],
+        "technical_skills": ["API Design", "Distributed Systems", "Database Optimization", "CI/CD"],
+        "soft_skills": ["Mentoring", "Technical Writing", "Team Collaboration"],
+        "programming_languages": ["Python", "TypeScript", "JavaScript", "SQL"],
+        "frameworks": ["FastAPI", "React", "Next.js"],
+        "databases": ["PostgreSQL", "Redis"],
+        "cloud_platforms": ["AWS"],
+        "tools": ["Docker", "Git", "Kubernetes"],
+        "projects": [
+            {
+                "title": "E-Commerce Microservices",
+                "description": "Designed custom order dispatch queue processing 10k orders/day.",
+                "technologies": ["Python", "FastAPI", "PostgreSQL", "Docker", "Redis"],
+                "github": "https://github.com/johndoe-mock/ecommerce-microservices",
+                "demo": "https://ecommerce-demo.johndoe.dev",
+                "contributions": ["Implemented asynchronous task workers", "Configured PostgreSQL connection pooling"]
+            }
+        ],
+        "experience": [
+            {
+                "title": "Software Engineer",
+                "company": "SaaS Ventures Ltd",
+                "employment_type": "Full-time",
+                "duration": "2024 - Present",
+                "responsibilities": [
+                    "Maintain frontends in React and TypeScript while supporting python microservice features.",
+                    "Optimize slow SQL queries on PostgreSQL, reducing response latency by 20%."
+                ],
+                "achievements": [
+                    "Led the containerization effort using Docker, improving local setup times for the team."
+                ],
+                "technologies": ["React", "TypeScript", "Python", "FastAPI", "PostgreSQL", "Docker"]
+            }
+        ],
+        "education": [
+            {
+                "degree": "B.S. Computer Science",
+                "branch": "Computer Science",
+                "institution": "State Tech University",
+                "year": "2023",
+                "cgpa": "3.8/4.0"
+            }
+        ],
+        "certifications": ["AWS Certified Solutions Architect"],
+        "internships": [
+            {
+                "company": "Tech Interns Inc",
+                "role": "Backend Intern",
+                "duration": "Summer 2022",
+                "summary": "Assisted with REST API development using Python and Flask, and created unit tests."
+            }
+        ],
+        "achievements": ["Valedictorian runner-up at State Tech University"],
+        "languages": ["English (Native)", "Spanish (Conversational)"],
+        "domain_experience": ["SaaS", "E-Commerce"],
+        "top_strengths": ["Clean API Design", "Containerization & Cloud Deployments"],
+        "potential_concerns": ["Limited high-frequency message queue experience"],
+        "links": [
+            {
+                "url": "https://github.com/johndoe-mock/ecommerce-microservices",
+                "type": "GitHub",
+                "verified": True,
+                "summary": "Repository evidence for FastAPI and PostgreSQL project work.",
+                "skills_found": ["FastAPI", "PostgreSQL", "Docker"],
+                "projects_found": ["E-Commerce Microservices"]
+            }
+        ]
     }
 
 def get_mock_jd_parsed() -> dict:
@@ -775,7 +1258,16 @@ def get_mock_jd_parsed() -> dict:
       "required_skills": ["React", "TypeScript", "Python", "Kafka", "Distributed Systems", "PCI-DSS Security Compliance"],
       "preferred_skills": ["Kubernetes", "AWS", "FastAPI"],
       "industry": "Financial Technology",
-      "seniority": "Senior"
+      "seniority": "Senior",
+      "experience": "5+ years",
+      "responsibilities": [
+        "Design resilient services",
+        "Own technical delivery",
+        "Collaborate with product and security teams"
+      ],
+      "domain": "Payments",
+      "leadership_expectations": ["Mentor engineers", "Lead design reviews"],
+      "communication_expectations": ["Explain technical trade-offs", "Write clear implementation plans"]
     }
 
 def get_mock_match_analysis(resume_parsed: dict, jd_parsed: dict) -> dict:

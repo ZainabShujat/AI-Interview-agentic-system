@@ -68,6 +68,14 @@ export default function Dashboard() {
     { name: 'Needs Improvement (<60)', value: 10, color: '#fb7185' }
   ];
 
+  const hiringProcess = [
+    { step: '1', title: 'Create role intake', body: 'Recruiter answers guided questions once.' },
+    { step: '2', title: 'Approve hiring blueprint', body: 'JD Agent extracts and recruiter edits role expectations.' },
+    { step: '3', title: 'Parse candidate evidence', body: 'Resume Agent enriches profile from resume and public links.' },
+    { step: '4', title: 'Run adaptive interview', body: 'AI asks role-specific questions and follow-ups.' },
+    { step: '5', title: 'Review ranking and report', body: 'Leaderboard, heatmap, transcript, and recommendation are ready.' },
+  ];
+
   // Pipeline funnel steps
   const funnelData = [
     { label: 'Invited', count: 1248, percentage: '100%', color: '#818cf8' },
@@ -79,7 +87,7 @@ export default function Dashboard() {
 
   const handleCandidateClick = (_cand: any) => {
     // Navigate to report page to view details
-    navigate('/report');
+    navigate('/recruiter/report');
   };
 
   return (
@@ -92,17 +100,17 @@ export default function Dashboard() {
             Recruiter Workspace
           </h1>
           <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
-            Conduct assessment reviews, monitor agent evaluation funnels, and examine structured diagnostics.
+            Review parsed candidates, inspect screening evidence, and open full interview reports for every applicant.
           </p>
         </div>
         
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => navigate('/upload')}
+            onClick={() => navigate('/recruiter/create')}
             className="btn-base btn-primary text-xs py-2.5 px-4 font-semibold gap-2"
           >
             <Plus className="w-4 h-4" />
-            <span>New Candidate Assessment</span>
+            <span>Create Recruiter Assessment</span>
           </button>
         </div>
       </div>
@@ -225,7 +233,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between border-b border-subtle pb-4" style={{ borderColor: 'var(--color-border-subtle)' }}>
                 <div>
                   <h4 className="text-sm font-bold uppercase tracking-wider text-white">Candidates Directory</h4>
-                  <p className="text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>Review detailed mock screening scores and anti-cheat indicators.</p>
+                  <p className="text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>Inspect parsed resumes, JD alignment, screening scores, and full candidate reports.</p>
                 </div>
                 <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-full font-bold">
                   {fullCandidatesList.length} Total Profiles
@@ -240,7 +248,7 @@ export default function Dashboard() {
                       <th className="pb-3">Target Role</th>
                       <th className="pb-3 text-center">Score</th>
                       <th className="pb-3 text-center">STAR Rate</th>
-                      <th className="pb-3">Proctoring Status</th>
+                      <th className="pb-3">Screening Evidence</th>
                       <th className="pb-3">Date Completed</th>
                       <th className="pb-3 text-right">Action</th>
                     </tr>
@@ -279,7 +287,7 @@ export default function Dashboard() {
                               onClick={() => handleCandidateClick(cand)}
                               className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded font-medium transition-colors border border-white/10"
                             >
-                              View Diagnostics
+                              Full Report
                             </button>
                           </td>
                         </tr>
@@ -290,6 +298,29 @@ export default function Dashboard() {
             </div>
           ) : activeTab === 'Overview' ? (
             <>
+              <div className="card-premium p-5">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-theme-tertiary block mb-1">Recruiter workload reducer</span>
+                    <h4 className="text-lg font-bold text-theme-primary">Full hiring process, step by step</h4>
+                  </div>
+                  <button onClick={() => navigate('/recruiter/create')} className="btn-base btn-secondary text-xs">
+                    Create assessment
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                  {hiringProcess.map((item) => (
+                    <div key={item.step} className="rounded-lg border border-subtle p-4" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
+                      <span className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold mb-3" style={{ backgroundColor: 'var(--color-mauve-strong)' }}>
+                        {item.step}
+                      </span>
+                      <span className="text-xs font-bold text-theme-primary block mb-1">{item.title}</span>
+                      <p className="text-[11px] leading-5 text-theme-secondary">{item.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Metric Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {metricCards.map((card, idx) => (
@@ -468,7 +499,7 @@ export default function Dashboard() {
                           <XAxis dataKey="name" tick={{ fill: 'var(--color-text-tertiary)', fontSize: 9 }} axisLine={false} tickLine={false} />
                           <Tooltip 
                             contentStyle={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border-subtle)', borderRadius: 6 }} 
-                            labelStyle={{ color: 'white', fontSize: 10 }}
+                            labelStyle={{ color: 'var(--color-text-primary)', fontSize: 10 }}
                             itemStyle={{ color: 'var(--color-accent-indigo)', fontSize: 10 }}
                           />
                           <Line 

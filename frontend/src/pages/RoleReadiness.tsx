@@ -57,23 +57,25 @@ export default function RoleReadiness() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(mockAnalysisData);
   const [startingInterview, setStartingInterview] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchMatch = async () => {
       if (!resumeId || !jdId) {
-        // If not uploaded, just show mock after a brief loading state
-        setTimeout(() => setLoading(false), 800);
+        setError('No resume/JD session found. Start from the student assessment page.');
+        setLoading(false);
         return;
       }
 
       try {
+        setError('');
         const res = await axios.post('/api/match', {
           resume_id: resumeId,
           jd_id: jdId,
         });
         setData(res.data);
-      } catch (err) {
-        console.warn('Backend failed or not connected. Using fallback mockup.', err);
+      } catch (err: any) {
+        setError(err?.response?.data?.detail || 'Could not compute readiness. Check the backend and API key.');
       } finally {
         setLoading(false);
       }
@@ -84,24 +86,20 @@ export default function RoleReadiness() {
 
   const handleStartSimulation = async () => {
     setStartingInterview(true);
+    setError('');
     try {
-      let interviewIdRes = 'mock-interview-456';
-      try {
-        const res = await axios.post('/api/interview/start', {
-          resume_id: resumeId || 'mock-resume-123',
-          jd_id: jdId || 'mock-jd-123',
-        });
-        interviewIdRes = res.data.id || res.data.interview_id;
-      } catch (err) {
-        console.warn('Backend connection failed. Using mock interview.', err);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!resumeId || !jdId) {
+        throw new Error('No resume/JD session found. Start from the student assessment page.');
       }
+      const res = await axios.post('/api/interview/start', {
+        resume_id: resumeId,
+        jd_id: jdId,
+      });
+      const interviewIdRes = res.data.id || res.data.interview_id;
       setInterviewId(interviewIdRes);
       setShowRoadmap(true);
-    } catch (err) {
-      console.error(err);
-      setInterviewId('mock-interview-456');
-      setShowRoadmap(true);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || 'Could not start interview. Check the backend and API key.');
     } finally {
       setStartingInterview(false);
     }
@@ -183,6 +181,11 @@ export default function RoleReadiness() {
 
   return (
     <div className="layout-container max-w-5xl">
+      {error && (
+        <div className="mb-6 rounded-lg border px-4 py-3 text-sm" style={{ borderColor: 'rgba(244, 63, 94, 0.3)', backgroundColor: 'rgba(244, 63, 94, 0.08)', color: 'var(--color-accent-coral)' }}>
+          {error}
+        </div>
+      )}
       {/* Title block */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12">
         <div>
