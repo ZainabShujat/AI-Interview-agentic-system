@@ -75,3 +75,11 @@ class Report(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     interview = relationship("Interview", back_populates="report")
+
+class ResumeCache(Base):
+    __tablename__ = "resume_caches"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    raw_text_hash = Column(String(64), unique=True, index=True, nullable=False)
+    parsed_json = Column(JSON, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

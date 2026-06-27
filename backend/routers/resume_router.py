@@ -71,17 +71,42 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
                 detail=f"Failed to extract readable text from the uploaded {filename.split('.')[-1].upper()} file."
             )
 
-        # 3. Parse text using Gemini Resume Agent
+        # Check database cache first (using SHA256 hash match)
+        import hashlib
+        resume_hash = hashlib.sha256(raw_text.encode('utf-8')).hexdigest()
+        existing_cache = db.query(models.ResumeCache).filter(models.ResumeCache.raw_text_hash == resume_hash).first()
+        
+        if existing_cache and existing_cache.parsed_json:
+            # Ensure an associated Resume entity exists for foreign keys / interviews mapping
+            db_resume = db.query(models.Resume).filter(models.Resume.raw_text == raw_text).first()
+            if not db_resume:
+                db_resume = models.Resume(
+                    raw_text=raw_text,
+                    parsed_json=existing_cache.parsed_json
+                )
+                db.add(db_resume)
+                db.commit()
+                db.refresh(db_resume)
+            return {
+                "id": db_resume.id,
+                "filename": file.filename,
+                "parsed": existing_cache.parsed_json,
+                "raw_resume_text": raw_text
+            }
+
+        # 3. Parse text using Gemini Resume Agent (handles local extraction, LLM parsing, and DB caching)
         parsed_data = gemini_service.parse_resume(raw_text)
         
-        # 4. Save to database
-        db_resume = models.Resume(
-            raw_text=raw_text,
-            parsed_json=parsed_data
-        )
-        db.add(db_resume)
-        db.commit()
-        db.refresh(db_resume)
+        # 4. Fetch or insert the Resume entity record for relational mapping
+        db_resume = db.query(models.Resume).filter(models.Resume.raw_text == raw_text).first()
+        if not db_resume:
+            db_resume = models.Resume(
+                raw_text=raw_text,
+                parsed_json=parsed_data
+            )
+            db.add(db_resume)
+            db.commit()
+            db.refresh(db_resume)
         
         return {
             "id": db_resume.id,

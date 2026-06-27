@@ -3,12 +3,9 @@ import json
 import re
 import urllib.request
 import urllib.error
-import logging
-from typing import Optional, Dict, List, Any
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-logger = logging.getLogger(__name__)
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -249,443 +246,199 @@ def normalize_resume_parsed(data: dict) -> dict:
 
     return data
 
-# --- HARDCODED SKILL DATABASE ---
-PROGRAMMING_LANGUAGES = {
-    "python", "javascript", "typescript", "java", "c++", "c#", "go", "rust", 
-    "ruby", "php", "swift", "kotlin", "scala", "r", "perl", "bash", "shell",
-    "sql", "html", "css", "groovy", "elixir", "erlang", "clojure"
-}
-
-FRAMEWORKS = {
-    "react", "angular", "vue", "svelte", "next.js", "nextjs", "gatsby", "nuxt",
-    "express", "fastapi", "django", "flask", "spring", "spring boot", "asp.net",
-    "rails", "laravel", "symfony", "graphql", "rest", "grpc"
-}
-
-DATABASES = {
-    "postgres", "postgresql", "mysql", "mongodb", "redis", "elasticsearch",
-    "cassandra", "dynamodb", "firestore", "oracle", "mssql", "sqlite",
-    "cockroachdb", "neo4j", "influxdb", "clickhouse", "bigquery"
-}
-
-CLOUD_PLATFORMS = {
-    "aws", "amazon web services", "azure", "gcp", "google cloud", "heroku",
-    "vercel", "netlify", "digitalocean", "linode", "cloudfoundry", "ibm cloud"
-}
-
-TOOLS_AND_PLATFORMS = {
-    "docker", "kubernetes", "k8s", "jenkins", "gitlab", "github", "git", "circleci",
-    "terraform", "ansible", "chef", "puppet", "grafana", "prometheus", "datadog",
-    "slack", "jira", "confluence", "notion", "figma", "postman", "vscode", "vim",
-    "emacs", "intellij", "pycharm", "vs code", "xcode", "android studio"
-}
-
-SOFT_SKILLS = {
-    "leadership", "communication", "teamwork", "collaboration", "problem-solving",
-    "critical thinking", "time management", "adaptability", "creativity", "mentoring",
-    "negotiation", "presentation", "strategic thinking", "agile", "scrum"
-}
-
-def _quick_is_resume(text: str) -> bool:
-    """Fast heuristic check if text is a resume (no LLM)."""
-    resume_keywords = ['experience', 'education', 'skills', 'project', 'achievement', 
-                       'responsibility', 'certification', 'employment']
-    text_lower = text.lower()
-    keyword_count = sum(1 for keyword in resume_keywords if keyword in text_lower)
-    if keyword_count >= 2:
-        return True
-    if re.search(r'\b(?:B\.?S|B\.?A|M\.?S|M\.?B\.?A|Ph\.?D\.?)\b', text):
-        return True
-    if re.search(r'\d{4}\s*(?:-|to)\s*\d{4}', text):
-        return True
-    return False
-
-def _categorize_skills(skills_text: str) -> dict:
-    """Categorize skills using hardcoded database (no LLM)."""
-    all_skills = []
-    skill_matches = re.findall(r'(?:^|\b|,\s*)([A-Z][A-Za-z0-9+\-.*#\s()]{1,30}?)(?:,|\s*$|\n)', skills_text)
-    all_skills.extend([s.strip() for s in skill_matches if s.strip()])
-    
-    for delimiter in [',', '•', '|', '·', '-']:
-        if delimiter in skills_text:
-            parts = skills_text.split(delimiter)
-            all_skills.extend([s.strip() for s in parts if 2 < len(s.strip()) < 50])
-    
-    categorized = {
-        'programming_languages': [],
-        'frameworks': [],
-        'databases': [],
-        'cloud_platforms': [],
-        'tools': [],
-        'soft_skills': []
-    }
-    
-    seen = set()
-    for skill in all_skills:
-        skill_lower = skill.lower().strip()
-        if skill_lower in seen or len(skill_lower) < 2:
-            continue
-        seen.add(skill_lower)
-        
-        if skill_lower in PROGRAMMING_LANGUAGES:
-            categorized['programming_languages'].append(skill)
-        elif any(fw.lower() in skill_lower or skill_lower in fw.lower() for fw in FRAMEWORKS):
-            categorized['frameworks'].append(skill)
-        elif any(db.lower() in skill_lower or skill_lower in db.lower() for db in DATABASES):
-            categorized['databases'].append(skill)
-        elif any(cp.lower() in skill_lower or skill_lower in cp.lower() for cp in CLOUD_PLATFORMS):
-            categorized['cloud_platforms'].append(skill)
-        elif any(tool.lower() in skill_lower or skill_lower in tool.lower() for tool in TOOLS_AND_PLATFORMS):
-            categorized['tools'].append(skill)
-        elif skill_lower in SOFT_SKILLS:
-            categorized['soft_skills'].append(skill)
-        else:
-            categorized['tools'].append(skill)
-    
-    return categorized
-
-def extract_email(text: str) -> Optional[str]:
-    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-    match = re.search(email_pattern, text)
-    return match.group(0) if match else None
-
-def extract_phone(text: str) -> Optional[str]:
-    phone_pattern = r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b'
-    match = re.search(phone_pattern, text)
-    return match.group(0) if match else None
-
-def _clean_resume_text(text: str) -> str:
-    """
-    Cleans raw resume text to minimize prompt tokens:
-    - Replaces emails, phone numbers, and URLs with small placeholders.
-    - Strips lines that contain only contact identifiers, noise, or page numbers.
-    - Collapses multiple whitespaces and consecutive blank lines.
-    """
-    # Replace email, phone, urls
-    text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EMAIL]', text)
-    text = re.sub(r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b', '[PHONE]', text)
-    text = re.sub(r"https?://[^\s<>)\]]+", '[URL]', text)
-    
-    lines = []
-    for line in text.split('\n'):
-        cleaned_line = line.strip()
-        # Skip empty lines or lines with page indicators (e.g. Page 1, 1 of 3)
-        if not cleaned_line or re.match(r'^(?i:page)?\s*\d+\s*(?:of\s*\d+)?$', cleaned_line):
-            continue
-        # Remove placeholders and punctuation to see if semantic text remains
-        temp = re.sub(r'\[(?:EMAIL|PHONE|URL)\]', '', cleaned_line)
-        temp = re.sub(r'[\s|•·,\-_\/]+', '', temp)
-        if not temp:
-            continue
-        lines.append(line)
-        
-    cleaned_text = '\n'.join(lines)
-    # Remove duplicate empty lines and collapse multiple spaces
-    cleaned_text = re.sub(r'\n\s*\n+', '\n\n', cleaned_text)
-    cleaned_text = re.sub(r'[ \t]+', ' ', cleaned_text)
-    return cleaned_text.strip()
-
-# --- 1. Resume Parser Agent (HYBRID - Local Extraction + Shrunk Prompt LLM) ---
+# --- 1. Resume Parser Agent ---
 def parse_resume(raw_text: str) -> dict:
-    """
-    Parses resume using a hybrid approach:
-    1. Checks the SQLite/Postgres database cache to avoid LLM calls for seen files.
-    2. Extracts simple fields (Name, Email, Phone, Location, Headline, Links, Experience Years) locally.
-    3. Sends cleaned semantic text to Gemini with a highly shrunk prompt to parse complex structured fields.
-    4. Merges metadata and LLM outputs locally and saves to DB cache.
-    """
-    import hashlib
-    resume_hash = hashlib.sha256(raw_text.encode('utf-8')).hexdigest()
+    if not GEMINI_API_KEY:
+        return get_mock_resume_parsed()
 
-    # 1. Check database cache first (using SHA256 hash match)
-    db = SessionLocal()
+    # Pre-check: Verify if the text content resembles a resume
+    if not raw_text or len(raw_text.strip()) < 100:
+        raise ValueError("Unable to parse resume.")
+
+    check_prompt = f"""
+    You are an AI assistant verifying if a document is a professional resume, CV, or candidate profile.
+    Analyze the following text excerpt. If it is a menu, essay, receipt, log file, book chapter, random conversation, completely empty/corrupted text, or overall not a candidate resume/CV, reply with NO.
+    If it is a valid resume or CV, reply with YES.
+    
+    Reply with exactly one word: YES or NO.
+    
+    Text:
+    {raw_text[:3000]}
+    """
     try:
-        existing = db.query(models.ResumeCache).filter(models.ResumeCache.raw_text_hash == resume_hash).first()
-        if existing and existing.parsed_json:
-            return existing.parsed_json
+        model = genai.GenerativeModel(GEMINI_MODEL)
+        response = model.generate_content(check_prompt, request_options={"timeout": 10})
+        is_resume = response.text.strip().upper()
+        if "YES" not in is_resume:
+            raise ValueError("Unable to parse resume.")
+    except ValueError:
+        raise
     except Exception as e:
-        logger.warning(f"Failed to query ResumeCache: {e}")
-    finally:
-        db.close()
+        # Proceed as fallback on transient network/API issues to avoid false negatives
+        print(f"Resume validation pre-check failed: {e}. Proceeding with fallback.")
 
-    # Step 1: Pre-extract simple metadata fields locally
-    pre_extracted = {
-        'candidate_name': _extract_name(raw_text),
-        'email': extract_email(raw_text),
-        'phone': extract_phone(raw_text),
-        'location': _extract_location(raw_text),
-        'estimated_experience_years': _extract_years_of_experience(raw_text),
-        'headline': _extract_headline(raw_text),
-    }
-
-    # Extract links and verify evidence
     resume_links = extract_urls(raw_text)
     link_evidence = fetch_public_link_evidence(resume_links) if resume_links else []
-    
-    linkedin_urls = [url for url in resume_links if 'linkedin.com' in url.lower()]
-    github_urls = [url for url in resume_links if 'github.com' in url.lower()]
-    portfolio_urls = [url for url in resume_links if any(x in url.lower() for x in ['portfolio', 'site', 'personal'])]
-    
-    pre_extracted['linkedin'] = linkedin_urls[0] if linkedin_urls else None
-    pre_extracted['github'] = github_urls[0] if github_urls else None
-    pre_extracted['portfolio'] = portfolio_urls[0] if portfolio_urls else None
-    pre_extracted['website'] = None
 
-    # Step 2: Use Gemini to infer and structure the complex fields
-    if not GEMINI_API_KEY:
-        # If API key is missing, build local fallback structure
-        fallback_data = {
-            **pre_extracted,
-            'summary': f"Professional with {pre_extracted['estimated_experience_years']} years of experience.",
-            'career_level': 'Mid-Level' if pre_extracted['estimated_experience_years'] < 5 else 'Senior',
-            'primary_domain': 'Software Engineering',
-            'skills': list(_categorize_skills(raw_text).get('tools', []))[:10],
-            'projects': [],
-            'experience': _extract_experience(raw_text),
-            'education': _extract_education(raw_text),
-            'certifications': _extract_certifications(raw_text),
-            'internships': [],
-            'achievements': [],
-            'languages': [],
-            'domain_experience': [],
-            'top_strengths': [],
-            'potential_concerns': [],
-            'links': [
-                {
-                    'url': evidence['url'],
-                    'type': 'GitHub' if 'github' in evidence['url'].lower() else 'LinkedIn' if 'linkedin' in evidence['url'].lower() else 'Portfolio',
-                    'verified': evidence['status'] == 'fetched',
-                    'summary': evidence.get('text_excerpt', '')[:500],
-                    'skills_found': [],
-                    'projects_found': []
-                }
-                for evidence in link_evidence
-            ]
-        }
-        normalized_data = normalize_resume_parsed(fallback_data)
-        
-        # Save fallback response to DB cache
-        db = SessionLocal()
-        try:
-            db_cache = models.ResumeCache(raw_text_hash=resume_hash, parsed_json=normalized_data)
-            db.add(db_cache)
-            db.commit()
-        except Exception as e:
-            logger.warning(f"Failed to save fallback to ResumeCache: {e}")
-        finally:
-            db.close()
-            
-        return normalized_data
+    prompt = f"""
+You are Resume Intelligence Agent.
 
-    # Preprocess text to strip out page numbers, duplicate spaces, and contact info block lines
-    cleaned_text = _clean_resume_text(raw_text)
+Analyze the candidate's resume and extract structured information.
 
-    # Highly optimized prompt containing only fields to be inferred/structured
-    prompt = f"""You are Resume Intelligence Agent. Analyze the resume raw text and extract structured information.
-Do not extract email, phone, name, location, headline, or links (these are already handled).
+Use the supplied public link evidence only to verify or enrich information.
+Never invent information.
 
-Resume Raw Text:
-{cleaned_text}
+Rules:
+- Return ONLY valid JSON.
+- Do NOT include markdown.
+- Do NOT include explanations.
+- Do NOT omit any key.
+- If information is unavailable, return null or [].
+
+Resume:
+{raw_text}
+
+Verified Link Evidence:
+{json.dumps(link_evidence, separators=(",", ":"))}
 
 Return JSON matching exactly this schema:
+
 {{
+  "candidate_name": "",
+  "headline": "",
+  "email": "",
+  "phone": "",
+  "location": "",
+
+  "linkedin": "",
+  "github": "",
+  "portfolio": "",
+  "website": "",
+
   "summary": "",
+
   "career_level": "",
+  "estimated_experience_years": 0,
   "primary_domain": "",
-  "skills": [], "technical_skills": [], "soft_skills": [], "programming_languages": [], "frameworks": [], "databases": [], "cloud_platforms": [], "tools": [],
-  "projects": [{{"title": "", "description": "", "technologies": [], "github": "", "demo": "", "contributions": []}}],
-  "experience": [{{"title": "", "company": "", "employment_type": "", "duration": "", "responsibilities": [], "achievements": [], "technologies": []}}],
-  "education": [{{"degree": "", "branch": "", "institution": "", "year": "", "cgpa": ""}}],
+
+  "skills": [],
+  "technical_skills": [],
+  "soft_skills": [],
+  "programming_languages": [],
+  "frameworks": [],
+  "databases": [],
+  "cloud_platforms": [],
+  "tools": [],
+
+  "projects": [
+    {{
+      "title": "",
+      "description": "",
+      "technologies": [],
+      "github": "",
+      "demo": "",
+      "contributions": []
+    }}
+  ],
+
+  "experience": [
+    {{
+      "title": "",
+      "company": "",
+      "employment_type": "",
+      "duration": "",
+      "responsibilities": [],
+      "achievements": [],
+      "technologies": []
+    }}
+  ],
+
+  "education": [
+    {{
+      "degree": "",
+      "branch": "",
+      "institution": "",
+      "year": "",
+      "cgpa": ""
+    }}
+  ],
+
   "certifications": [],
-  "internships": [{{"company": "", "role": "", "duration": "", "summary": ""}}],
-  "achievements": [], "languages": [], "domain_experience": [], "top_strengths": [], "potential_concerns": []
-}}"""
+
+  "internships": [
+    {{
+      "company": "",
+      "role": "",
+      "duration": "",
+      "summary": ""
+    }}
+  ],
+
+  "achievements": [],
+
+  "languages": [],
+
+  "domain_experience": [],
+
+  "top_strengths": [],
+
+  "potential_concerns": [],
+
+  "links": [
+    {{
+      "url": "",
+      "type": "",
+      "verified": true,
+      "summary": "",
+      "skills_found": [],
+      "projects_found": []
+    }}
+  ]
+}}
+"""
 
     try:
         raw_res = call_gemini_json(prompt)
-        if not isinstance(raw_res, dict):
-            raw_res = {}
-            
-        # Combine pre-extracted fields with Gemini's inferred fields
-        parsed_data = {
-            **pre_extracted,
-            **raw_res,
-            'links': [
-                {
-                    'url': evidence['url'],
-                    'type': 'GitHub' if 'github' in evidence['url'].lower() else 'LinkedIn' if 'linkedin' in evidence['url'].lower() else 'Portfolio',
-                    'verified': evidence['status'] == 'fetched',
-                    'summary': evidence.get('text_excerpt', '')[:500],
-                    'skills_found': [],
-                    'projects_found': []
-                }
-                for evidence in link_evidence
-            ]
-        }
-        
-        normalized_data = normalize_resume_parsed(parsed_data)
-        
-        # Save successful result to database cache
-        db = SessionLocal()
-        try:
-            db_cache = models.ResumeCache(raw_text_hash=resume_hash, parsed_json=normalized_data)
-            db.add(db_cache)
-            db.commit()
-        except Exception as e:
-            logger.warning(f"Failed to save result to ResumeCache: {e}")
-        finally:
-            db.close()
-            
-        return normalized_data
+        return normalize_resume_parsed(raw_res)
     except Exception as e:
         raise RuntimeError(f"Resume Agent failed while using Gemini API: {e}") from e
-
-# Helper extraction functions
-def _extract_name(text: str) -> Optional[str]:
-    lines = text.split('\n')
-    for line in lines[:10]:
-        line = line.strip()
-        if any(keyword in line.lower() for keyword in ['contact', 'email', 'phone', 'resume', 'cv']):
-            continue
-        if len(line) > 2 and len(line) < 60 and line[0].isupper():
-            words = line.split()
-            if len(words) >= 2 and all(word[0].isupper() for word in words if len(word) > 1):
-                return line
-    return None
-
-def _extract_location(text: str) -> Optional[str]:
-    location_pattern = r'\b([A-Z][a-z]+),\s*([A-Z]{2}|[A-Z][a-z\s]+)\b'
-    matches = re.findall(location_pattern, text)
-    if matches:
-        return f"{matches[0][0]}, {matches[0][1]}"
-    return None
-
-def _extract_years_of_experience(text: str) -> float:
-    patterns = [
-        r'(\d+)\s*\+?\s*years?\s+(?:of\s+)?experience',
-        r'(\d+)\s*-\s*(\d+)\s+years',
-        r'experience\s*:\s*(\d+)\s+years'
-    ]
-    
-    for pattern in patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        if matches:
-            if isinstance(matches[0], tuple):
-                return float(matches[0][0])
-            return float(matches[0])
-    
-    year_pattern = r'(20\d{2})'
-    years = re.findall(year_pattern, text)
-    if len(years) >= 2:
-        return float(max(years)) - float(min(years))
-    
-    return 0.0
-
-def _extract_headline(text: str) -> Optional[str]:
-    lines = text.split('\n')
-    for i, line in enumerate(lines[:15]):
-        line = line.strip()
-        if any(keyword in line.lower() for keyword in ['email', 'phone', 'address', 'education', 'experience', 'skills']):
-            continue
-        if 5 < len(line) < 100 and any(title_word in line.lower() for title_word in 
-            ['engineer', 'developer', 'architect', 'manager', 'lead', 'senior', 'junior', 
-             'analyst', 'scientist', 'designer', 'director', 'specialist']):
-            return line
-    return None
-
-def _extract_experience(text: str) -> list:
-    experience = []
-    sections = re.split(r'\n(?:EXPERIENCE|PROFESSIONAL EXPERIENCE|WORK HISTORY|Career History)\s*\n', text, flags=re.IGNORECASE)
-    exp_section = sections[1] if len(sections) > 1 else text
-    
-    job_pattern = r'([A-Z][A-Za-z\s&,]+?)(?:\s+at\s+|\s*@\s*)([A-Z][A-Za-z\s&,0-9.]+?)\s*\|?\s*\(?([\w\s,\-\/]+?)\)?(?:\n|$)'
-    
-    for match in re.finditer(job_pattern, exp_section):
-        job_title, company, duration = match.groups()
-        if len(job_title) > 100 or len(company) > 80:
-            continue
-        experience.append({
-            'title': job_title.strip(),
-            'company': company.strip(),
-            'employment_type': None,
-            'duration': duration.strip() if duration else None,
-            'responsibilities': [],
-            'achievements': [],
-            'technologies': []
-        })
-    
-    return experience
-
-def _extract_education(text: str) -> list:
-    education = []
-    sections = re.split(r'\n(?:EDUCATION|QUALIFICATIONS)\s*\n', text, flags=re.IGNORECASE)
-    edu_section = sections[1] if len(sections) > 1 else text
-    
-    edu_pattern = r'(?:B\.?[SMA]|Bachelor|Master|Ph\.?D\.?|Diploma|High School|Associate)[^,\n]*?(?:\s+in\s+([A-Z][^,\n]+?))?(?:\s+from\s+([A-Z][^,\n0-9]{10,}))?(?:\s*\(?([0-9]{4})?\)?)?'
-    
-    for match in re.finditer(edu_pattern, edu_section, re.IGNORECASE):
-        degree_match = re.search(r'(B\.?[SMA]|Bachelor|Master|Ph\.?D\.?|Diploma|High School|Associate)[^,\n]*', match.group(0))
-        if degree_match:
-            education.append({
-                'degree': degree_match.group(1),
-                'branch': match.group(1) if match.group(1) else None,
-                'institution': match.group(2) if match.group(2) else None,
-                'year': match.group(3) if match.group(3) else None,
-                'cgpa': None
-            })
-    
-    return education
-
-def _extract_certifications(text: str) -> list:
-    certs = []
-    cert_patterns = [
-        r'(?:Certified|Certification):?\s*([A-Z][^\n,]{15,100})',
-        r'AWS Certified[^\n,]+',
-        r'Google Cloud Certified[^\n,]+',
-        r'Azure Certified[^\n,]+',
-        r'Kubernetes[^\n,]+',
-        r'(?:PMP|CISSP|CCNA|ACED|OSCP)[^\n,]*'
-    ]
-    
-    for pattern in cert_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        certs.extend(matches)
-    
-    return list(set(certs))[:10]
 
 # --- 2. JD Parser Agent ---
 def parse_jd(raw_text: str) -> dict:
     if not GEMINI_API_KEY:
         return get_mock_jd_parsed()
         
-    prompt = f"""You are an expert recruiter parsing a Job Description. Extract:
-- title
-- required_skills (must-have)
-- preferred_skills (nice-to-have)
-- industry
-- seniority (Junior, Mid, Senior, Lead, Director)
-- experience
-- responsibilities
-- domain
-- leadership_expectations
-- communication_expectations
+    prompt = f"""
+    You are an expert recruiter parsing a Job Description.
+    Extract the following details from the text:
+    - Target Job Title
+    - Required Skills (must have)
+    - Preferred Skills (nice to have)
+    - Target Industry
+    - Seniority Level (Junior, Mid, Senior, Lead, Director)
+    - Experience expectations
+    - Responsibilities
+    - Domain
+    - Leadership expectations
+    - Communication expectations
 
-Job Description Raw Text:
-{raw_text}
+    Job Description Raw Text:
+    {raw_text}
 
-Return JSON matching exactly this schema:
-{{
-  "title": "",
-  "required_skills": [],
-  "preferred_skills": [],
-  "industry": "",
-  "seniority": "",
-  "experience": "",
-  "responsibilities": [],
-  "domain": "",
-  "leadership_expectations": [],
-  "communication_expectations": []
-}}"""
+    Return JSON matching this schema:
+    {{
+      "title": "Software Engineer",
+      "required_skills": ["skill1", "skill2"],
+      "preferred_skills": ["skill1"],
+      "industry": "Finance / SaaS",
+      "seniority": "Senior",
+      "experience": "5+ years",
+      "responsibilities": ["responsibility1"],
+      "domain": "Payments",
+      "leadership_expectations": ["Mentors engineers"],
+      "communication_expectations": ["Explains trade-offs clearly"]
+    }}
+    """
     try:
         return call_gemini_json(prompt)
     except Exception as e:
@@ -1533,6 +1286,150 @@ def get_mock_jd_parsed() -> dict:
       "industry": "Financial Technology",
       "seniority": "Senior",
       "experience": "5+ years",
+      "responsibilities": [
+        "Design resilient services",
+        "Own technical delivery",
+        "Collaborate with product and security teams"
+      ],
+      "domain": "Payments",
+      "leadership_expectations": ["Mentor engineers", "Lead design reviews"],
+      "communication_expectations": ["Explain technical trade-offs", "Write clear implementation plans"]
+    }
+
+def get_mock_match_analysis(resume_parsed: dict, jd_parsed: dict) -> dict:
+    return {
+      "matchScore": 82,
+      "roleInfo": {
+        "title": jd_parsed.get("title", "Senior Software Engineer"),
+        "industry": jd_parsed.get("industry", "Financial Technology"),
+        "seniority": jd_parsed.get("seniority", "Senior")
+      },
+      "readinessDetails": [
+        {"name": "Core Coding & Architecture", "score": 85},
+        {"name": "System Design & Scalability", "score": 75},
+        {"name": "Team Leadership & Culture", "score": 90},
+        {"name": "Domain Experience (Fintech)", "score": 70},
+        {"name": "Tooling & CI/CD Pipelines", "score": 90}
+      ],
+      "strengths": [
+        "Deep expertise in React, TypeScript, and state management architectures (Redux, Zustand).",
+        "Proven track record of designing REST and GraphQL APIs with Python-based microservices.",
+        "Strong deployment and operations expertise using Docker, Kubernetes, and AWS Cloud services."
+      ],
+      "gaps": [
+        {
+          "skill": "High-Frequency Messaging Networks",
+          "description": "The job requires familiarity with Apache Kafka or RabbitMQ. Your profile highlights database caching but lacks message queue orchestration."
+        },
+        {
+          "skill": "Fintech Security Compliance",
+          "description": "The description emphasizes PCI-DSS or SOC2 compliance experience. Your background is primarily in consumer product SaaS without direct audit exposure."
+        }
+      ],
+      "matched_skills": ["React", "TypeScript", "Python", "FastAPI", "Docker", "AWS"],
+      "missing_skills": ["Kafka", "SOC2 Compliance"],
+      "evidence": [
+        {"skill": "React", "status": "Found", "source": "Found in Experience: Software Engineer at SaaS Ventures Ltd"},
+        {"skill": "TypeScript", "status": "Found", "source": "Found in Experience: Software Engineer at SaaS Ventures Ltd"},
+        {"skill": "Python", "status": "Found", "source": "Found in Project: E-Commerce Microservices"},
+        {"skill": "FastAPI", "status": "Found", "source": "Found in Project: E-Commerce Microservices"},
+        {"skill": "Docker", "status": "Found", "source": "Found in Project: E-Commerce Microservices"},
+        {"skill": "AWS", "status": "Found", "source": "Found in Certifications: AWS Certified Solutions Architect"},
+        {"skill": "Kafka", "status": "Not Found", "source": "Not found in resume text"},
+        {"skill": "SOC2 Compliance", "status": "Not Found", "source": "Not found in resume text"}
+      ]
+    }
+
+MOCK_QUESTIONS_POOL = {
+    "Technical": [
+        "How do you design a robust caching layer in a high-frequency financial system?",
+        "Explain the differences between optimistic and pessimistic locking, and when you would use each.",
+        "How do you handle memory allocation and memory leak detection in a long-running production service?"
+    ],
+    "Scenario": [
+        "Explain how you would handle schema migrations in a distributed multi-tenant database with zero downtime.",
+        "How would you troubleshoot a sudden spike in latency across a microservices mesh during peak traffic?",
+        "Design a file-upload service that needs to process and generate thumbnails for 10 million images daily."
+    ],
+    "Behavioral": [
+        "Tell me about a time when you had to advocate for code quality over speed of delivery.",
+        "Describe a situation where you had to work with a difficult stakeholder to agree on a technical roadmap.",
+        "Tell me about a time when a production deployment failed. What did you do, and what did you learn?"
+    ],
+    "Leadership": [
+        "How do you handle conflict or architectural disagreements with senior staff developers?",
+        "Describe how you mentor junior engineers and help them level up their engineering skills.",
+        "How do you manage technical debt and convince business leadership to allocate time to refactoring?"
+    ]
+}
+
+def get_mock_question(category: str, difficulty: str, offset: int = 0) -> str:
+    pool = MOCK_QUESTIONS_POOL.get(category, MOCK_QUESTIONS_POOL["Technical"])
+    idx = offset % len(pool)
+    return pool[idx]
+
+def get_mock_evaluation(question: str, answer: str, signals: dict) -> dict:
+    accuracy = 80 if len(answer) > 40 else 65
+    depth = 75 if len(answer) > 80 else (55 if len(answer) <= 30 else 60)
+    confidence = max(50, 100 - (signals.get("fillerCount", 0) * 8) - int(signals.get("latencySeconds", 0)))
+    
+    return {
+      "accuracy": accuracy,
+      "depth": depth,
+      "communication": 85,
+      "confidence": confidence,
+      "practicality": 80,
+      "problemSolving": 75,
+      "businessThinking": 70,
+      "starFramework": {
+        "situation": len(answer) > 30,
+        "task": len(answer) > 50,
+        "action": len(answer) > 80,
+        "result": len(answer) > 100
+      },
+      "feedback": "Response is structured, but could expand more on cache eviction protocols and distributed synchronization risks.",
+      "fillerWordFeedback": f"Identified {signals.get('fillerCount', 0)} filler words. Pacing was measured at {signals.get('wordsPerMinute', 120)} words per minute."
+    }
+
+def get_mock_report_final(all_qa: list, memory: dict) -> dict:
+    profile = compile_communication_profile(all_qa)
+    return {
+      "overallScore": 84,
+      "recommendation": "Strong Hire",
+      "summary": "The candidate demonstrates exceptional technical articulation and architecture foundations. Communications pace was highly consistent with standard senior engineering benchmarks. Minor adjustments recommended in fintech compliance contexts and message queue depth.",
+      "dimensionScores": [
+        {"subject": "Accuracy", "A": 85, "fullMark": 100},
+        {"subject": "Depth", "A": 80, "fullMark": 100},
+        {"subject": "Communication", "A": 90, "fullMark": 100},
+        {"subject": "Scenario Handling", "A": 78, "fullMark": 100},
+        {"subject": "Leadership", "A": 88, "fullMark": 100}
+      ],
+      "categoryScores": [
+        {"name": "Technical", "score": 85},
+        {"name": "Scenario", "score": 78},
+        {"name": "Behavioral", "score": 90},
+        {"name": "Leadership", "score": 88}
+      ],
+      "heatmap": [
+        {"skill": "React & TS Architecture", "rating": "High", "color": "rgba(45, 212, 191, 0.15)", "textColor": "var(--color-accent-teal)", "border": "rgba(45, 212, 191, 0.3)"},
+        {"skill": "Microservices & API Design", "rating": "High", "color": "rgba(45, 212, 191, 0.15)", "textColor": "var(--color-accent-teal)", "border": "rgba(45, 212, 191, 0.3)"},
+        {"skill": "Docker & AWS Ops", "rating": "High", "color": "rgba(45, 212, 191, 0.15)", "textColor": "var(--color-accent-teal)", "border": "rgba(45, 212, 191, 0.3)"},
+        {"skill": "Distributed System Design", "rating": "Medium", "color": "rgba(129, 140, 248, 0.1)", "textColor": "var(--color-accent-indigo)", "border": "rgba(129, 140, 248, 0.25)"},
+        {"skill": "H-F Message Queues", "rating": "Needs Prep", "color": "rgba(251, 113, 133, 0.1)", "textColor": "var(--color-accent-coral)", "border": "rgba(251, 113, 133, 0.25)"},
+        {"skill": "Fintech SOC2 Compliance", "rating": "Needs Prep", "color": "rgba(251, 113, 133, 0.1)", "textColor": "var(--color-accent-coral)", "border": "rgba(251, 113, 133, 0.25)"}
+      ],
+      "strengths": [
+        "Articulates React render cycles and state transitions with high logical clarity.",
+        "Formulates clear microservice isolation protocols and API validation schemas.",
+        "Exhibits solid collaboration patterns, emphasizing mentoring and clear developer path structures."
+      ],
+      "recommendations": [
+        "Review basic event-driven topologies and explore Kafka queue structures (producers, consumers, and consumer-groups).",
+        "Familiarize yourself with ISO-27001 and SOC2 checklist rules regarding data residency and encryption-in-transit."
+      ],
+      "communicationProfile": profile,
+      "all_qa": all_qa
+    }
       "responsibilities": [
         "Design resilient services",
         "Own technical delivery",
