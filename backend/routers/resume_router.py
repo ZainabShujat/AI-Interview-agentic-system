@@ -55,6 +55,9 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
             "raw_resume_text": db_resume.raw_text
         }
         
+    except ValueError as ve:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error parsing resume: {str(e)}")

@@ -251,6 +251,32 @@ def parse_resume(raw_text: str) -> dict:
     if not GEMINI_API_KEY:
         return get_mock_resume_parsed()
 
+    # Pre-check: Verify if the text content resembles a resume
+    if not raw_text or len(raw_text.strip()) < 100:
+        raise ValueError("Unable to parse resume.")
+
+    check_prompt = f"""
+    You are an AI assistant verifying if a document is a professional resume, CV, or candidate profile.
+    Analyze the following text excerpt. If it is a menu, essay, receipt, log file, book chapter, random conversation, completely empty/corrupted text, or overall not a candidate resume/CV, reply with NO.
+    If it is a valid resume or CV, reply with YES.
+    
+    Reply with exactly one word: YES or NO.
+    
+    Text:
+    {raw_text[:3000]}
+    """
+    try:
+        model = genai.GenerativeModel(GEMINI_MODEL)
+        response = model.generate_content(check_prompt, request_options={"timeout": 10})
+        is_resume = response.text.strip().upper()
+        if "YES" not in is_resume:
+            raise ValueError("Unable to parse resume.")
+    except ValueError:
+        raise
+    except Exception as e:
+        # Proceed as fallback on transient network/API issues to avoid false negatives
+        print(f"Resume validation pre-check failed: {e}. Proceeding with fallback.")
+
     resume_links = extract_urls(raw_text)
     link_evidence = fetch_public_link_evidence(resume_links) if resume_links else []
 
