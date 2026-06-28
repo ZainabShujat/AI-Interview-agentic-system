@@ -95,6 +95,8 @@ def fetch_public_link_evidence(urls: list) -> list:
             })
     return evidence
 
+    return evidence
+
 def normalize_resume_parsed(data: dict) -> dict:
     if not isinstance(data, dict):
         data = {}
@@ -416,7 +418,6 @@ def parse_resume(raw_text: str) -> dict:
         'email': extract_email(raw_text),
         'phone': extract_phone(raw_text),
         'location': _extract_location(raw_text),
-        'estimated_experience_years': _extract_years_of_experience(raw_text),
         'headline': _extract_headline(raw_text),
     }
 
@@ -436,10 +437,24 @@ def parse_resume(raw_text: str) -> dict:
     # Step 2: Use Gemini to infer and structure the complex fields
     if not GEMINI_API_KEY:
         # If API key is missing, build local fallback structure
+        edu_list = _extract_education(raw_text)
+        grad_years = []
+        for edu in edu_list:
+            year_str = edu.get("year")
+            if year_str:
+                years = [int(y) for y in re.findall(r'\b(20\d{2}|19\d{2})\b', str(year_str))]
+                if years:
+                    grad_years.append(max(years))
+        fallback_years = 0.0
+        if grad_years:
+            import datetime
+            fallback_years = float(datetime.datetime.now().year - min(grad_years))
+
         fallback_data = {
             **pre_extracted,
-            'summary': f"Professional with {pre_extracted['estimated_experience_years']} years of experience.",
-            'career_level': 'Mid-Level' if pre_extracted['estimated_experience_years'] < 5 else 'Senior',
+            'estimated_experience_years': fallback_years,
+            'summary': f"Professional with {fallback_years} years of experience.",
+            'career_level': 'Mid-Level' if fallback_years < 5 else 'Senior',
             'primary_domain': 'Software Engineering',
             'skills': list(_categorize_skills(raw_text).get('tools', []))[:10],
             'projects': [],
@@ -485,6 +500,7 @@ def parse_resume(raw_text: str) -> dict:
     # Highly optimized prompt containing only fields to be inferred/structured
     prompt = f"""You are Resume Intelligence Agent. Analyze the resume raw text and extract structured information.
 Do not extract email, phone, name, location, headline, or links (these are already handled).
+For "estimated_experience_years", calculate the total years of professional work experience (excluding college/education years, count only actual working years or years post-graduation).
 
 Resume Raw Text:
 {cleaned_text}
@@ -494,6 +510,7 @@ Return JSON matching exactly this schema:
   "summary": "",
   "career_level": "",
   "primary_domain": "",
+  "estimated_experience_years": 0.0,
   "skills": [], "technical_skills": [], "soft_skills": [], "programming_languages": [], "frameworks": [], "databases": [], "cloud_platforms": [], "tools": [],
   "projects": [{{"title": "", "description": "", "technologies": [], "github": "", "demo": "", "contributions": []}}],
   "experience": [{{"title": "", "company": "", "employment_type": "", "duration": "", "responsibilities": [], "achievements": [], "technologies": []}}],
@@ -561,27 +578,6 @@ def _extract_location(text: str) -> Optional[str]:
     if matches:
         return f"{matches[0][0]}, {matches[0][1]}"
     return None
-
-def _extract_years_of_experience(text: str) -> float:
-    patterns = [
-        r'(\d+)\s*\+?\s*years?\s+(?:of\s+)?experience',
-        r'(\d+)\s*-\s*(\d+)\s+years',
-        r'experience\s*:\s*(\d+)\s+years'
-    ]
-    
-    for pattern in patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        if matches:
-            if isinstance(matches[0], tuple):
-                return float(matches[0][0])
-            return float(matches[0])
-    
-    year_pattern = r'(20\d{2})'
-    years = re.findall(year_pattern, text)
-    if len(years) >= 2:
-        return float(max(years)) - float(min(years))
-    
-    return 0.0
 
 def _extract_headline(text: str) -> Optional[str]:
     lines = text.split('\n')

@@ -76,13 +76,13 @@
       
       <div class="flex flex-wrap gap-4 text-xs font-semibold">
         <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
-          <input type="radio" name="endpoint-select" value="local" checked onchange="updateBaseUrlSelect()" class="text-indigo-600 focus:ring-0" />
-          <span>Local (localhost:8000)</span>
+          <input type="radio" name="endpoint-select" value="prod" checked onchange="updateBaseUrlSelect()" class="text-indigo-600 focus:ring-0" />
+          <span>Production Staging</span>
         </label>
         
         <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
-          <input type="radio" name="endpoint-select" value="prod" onchange="updateBaseUrlSelect()" class="text-indigo-600 focus:ring-0" />
-          <span>Production Staging</span>
+          <input type="radio" name="endpoint-select" value="local" onchange="updateBaseUrlSelect()" class="text-indigo-600 focus:ring-0" />
+          <span>Local (localhost:8000)</span>
         </label>
         
         <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
@@ -95,8 +95,8 @@
         <input 
           id="api-base-url" 
           type="text" 
-          value="http://localhost:8000"
-          placeholder="e.g. http://localhost:8000" 
+          value="https://hireintel-bv0v.onrender.com"
+          placeholder="e.g. https://hireintel-bv0v.onrender.com" 
           class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-indigo-300 focus:outline-none focus:border-indigo-500 font-mono w-full sm:w-80"
           readonly
         />
@@ -116,23 +116,59 @@
     <!-- Left Navigation Tabs Sidebar -->
     <div class="md:col-span-3 space-y-4">
       <nav class="flex flex-col gap-2">
-        {[
-          ['resume', 'Resume Intelligence', 'Parse PDF resumes & structure candidate profiles.'],
-          ['jd', 'JD Intelligence', 'Extract job roles into structured blueprints.'],
-          ['match', 'Readiness Match', 'Compute fit between raw resume & JD JSON schemas.'],
-          ['interview', 'Interview', 'Simulate adaptive questions & voice tracking queues.'],
-          ['judge', 'Judge', 'Evaluate transcript answers against category rubrics.'],
-          ['report', 'Report', 'Generate final evaluation insights & readiness metrics.']
-        ].map(([id, label, desc]) => `
-          <button 
-            id="tab-btn-${id}"
-            onclick="switchTab('${id}')" 
-            class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
-          >
-            <span class="text-sm font-bold text-white block">${label}</span>
-            <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">${desc}</span>
-          </button>
-        `).join('')}
+        <button 
+          id="tab-btn-resume"
+          onclick="switchTab('resume')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">Resume Intelligence</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Parse PDF resumes & structure candidate profiles.</span>
+        </button>
+
+        <button 
+          id="tab-btn-jd"
+          onclick="switchTab('jd')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">JD Intelligence</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Extract job roles into structured blueprints.</span>
+        </button>
+
+        <button 
+          id="tab-btn-match"
+          onclick="switchTab('match')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">Readiness Match</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Compute fit between raw resume & JD JSON schemas.</span>
+        </button>
+
+        <button 
+          id="tab-btn-interview"
+          onclick="switchTab('interview')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">Interview</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Simulate adaptive questions & voice tracking queues.</span>
+        </button>
+
+        <button 
+          id="tab-btn-judge"
+          onclick="switchTab('judge')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">Judge</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Evaluate transcript answers against category rubrics.</span>
+        </button>
+
+        <button 
+          id="tab-btn-report"
+          onclick="switchTab('report')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">Report</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Generate final evaluation insights & readiness metrics.</span>
+        </button>
       </nav>
 
       <!-- Live API Health Panel -->
@@ -153,11 +189,11 @@
     </div>
 
     <!-- Right Split Panel: Active Playground console -->
-    <section class="md:col-span-9 grid grid-cols-1 lg:grid-cols-2 gap-6 h-[740px] items-stretch">
+    <section class="md:col-span-9 grid grid-cols-1 lg:grid-cols-2 gap-6 h-[760px] items-stretch">
       
       <!-- Left Box: Request Panel -->
       <div class="glass-card rounded-2xl p-6 flex flex-col justify-between border-slate-800/80 glow-indigo transition-all">
-        <div class="flex flex-col h-full space-y-4">
+        <div class="flex flex-col h-full space-y-4 border-slate-800">
           <div class="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
               <span class="text-[10px] uppercase font-bold tracking-widest text-indigo-400 block">Input Console</span>
@@ -188,25 +224,38 @@
 
       <!-- Right Box: Response Panel -->
       <div class="glass-card rounded-2xl p-6 flex flex-col justify-between border-slate-800/80 glow-teal transition-all">
-        <div class="flex flex-col h-full space-y-4">
+        <div class="flex flex-col h-full space-y-4 min-h-0">
           <div class="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
               <span class="text-[10px] uppercase font-bold tracking-widest text-teal-400 block">Output Response</span>
-              <h2 class="text-lg font-bold text-white font-sans mt-0.5">Raw JSON Viewer</h2>
+              <div class="flex items-center gap-2 mt-0.5">
+                <button id="btn-show-json" onclick="setResponseView('json')" class="text-xs font-bold text-white border-b-2 border-teal-400 pb-0.5 focus:outline-none">JSON payload</button>
+                <span class="text-slate-600 text-xs">|</span>
+                <button id="btn-show-preview" onclick="setResponseView('preview')" class="text-xs font-bold text-slate-400 hover:text-white pb-0.5 focus:outline-none">Visual Preview</button>
+              </div>
             </div>
             <span id="response-code" class="text-[10px] px-2 py-0.5 rounded border border-slate-800 text-slate-400 bg-slate-900 font-bold">
               Idle
             </span>
           </div>
 
+          <!-- Dynamic Output Views -->
           <div class="flex-grow flex flex-col min-h-0">
-            <!-- Response textareas / logs -->
+            <!-- JSON text view -->
             <textarea 
               id="raw-response" 
               readonly 
               class="w-full flex-grow bg-slate-950/80 border border-slate-900 rounded-xl p-4 text-[11px] text-teal-400 font-mono focus:outline-none resize-none leading-relaxed"
               placeholder="Click 'Run Playground Test' to see the agent response..."
             ></textarea>
+            
+            <!-- Visual HTML view (initially hidden) -->
+            <div 
+              id="visual-preview-container" 
+              class="hidden w-full flex-grow bg-slate-950/80 border border-slate-900 rounded-xl p-4 overflow-y-auto leading-relaxed text-slate-300"
+            >
+              <div class="text-center py-10 text-xs text-slate-500">No active parsed data to visualize. Execute a playground test first.</div>
+            </div>
           </div>
         </div>
 
@@ -243,6 +292,8 @@
   <!-- Playground Scripts -->
   <script>
     let activeTabId = 'resume';
+    let currentResponseView = 'json'; // 'json' or 'preview'
+    let lastFetchedResponse = null;
 
     // Templates for various tabs
     const templates = {
@@ -480,6 +531,9 @@ Requirements:
       }
 
       renderRequestInputs();
+      
+      // Reset view to JSON view
+      setResponseView('json');
     }
 
     // File name update helper
@@ -502,7 +556,7 @@ Requirements:
         input.value = 'http://localhost:8000';
         input.readOnly = true;
       } else if (selected === 'prod') {
-        input.value = 'https://careerpilot-backend-v5hz.onrender.com';
+        input.value = 'https://hireintel-bv0v.onrender.com';
         input.readOnly = true;
       } else {
         input.value = '';
@@ -511,6 +565,426 @@ Requirements:
         input.focus();
       }
       pingAllAgents();
+    }
+
+    // Toggle Response Panel view (JSON vs visual preview)
+    function setResponseView(view) {
+      currentResponseView = view;
+      const jsonArea = document.getElementById('raw-response');
+      const previewArea = document.getElementById('visual-preview-container');
+      const btnJson = document.getElementById('btn-show-json');
+      const btnPreview = document.getElementById('btn-show-preview');
+
+      if (view === 'json') {
+        jsonArea.classList.remove('hidden');
+        previewArea.classList.add('hidden');
+        btnJson.className = "text-xs font-bold text-white border-b-2 border-teal-400 pb-0.5 focus:outline-none";
+        btnPreview.className = "text-xs font-bold text-slate-400 hover:text-white pb-0.5 focus:outline-none";
+      } else {
+        jsonArea.classList.add('hidden');
+        previewArea.classList.remove('hidden');
+        btnJson.className = "text-xs font-bold text-slate-400 hover:text-white pb-0.5 focus:outline-none";
+        btnPreview.className = "text-xs font-bold text-white border-b-2 border-teal-400 pb-0.5 focus:outline-none";
+        renderVisualPreview(activeTabId, lastFetchedResponse);
+      }
+    }
+
+    // Render formatted human-readable card layout based on the backend JSON response
+    function renderVisualPreview(tabId, data) {
+      const container = document.getElementById('visual-preview-container');
+      if (!data || data.error) {
+        container.innerHTML = `
+          <div class="text-center py-10 text-xs text-slate-500">
+            No active parsed data to visualize. Execute a playground test successfully first.
+          </div>
+        `;
+        return;
+      }
+
+      function resolveParsedObject(input) {
+        if (!input) return {};
+        if (typeof input === 'string') {
+          try {
+            input = JSON.parse(input);
+          } catch(e) {
+            return {};
+          }
+        }
+        let obj = input.parsed || input.parsed_json || input.parsedData || input;
+        if (typeof obj === 'string') {
+          try {
+            obj = JSON.parse(obj);
+          } catch(e) {}
+        }
+        if (obj && obj !== input && (obj.parsed || obj.parsed_json || obj.parsedData)) {
+          return resolveParsedObject(obj);
+        }
+        return obj || {};
+      }
+
+      let html = '';
+      if (tabId === 'resume') {
+        const profile = resolveParsedObject(data);
+        const name = profile.candidate_name || "N/A";
+        const email = profile.email || "N/A";
+        const phone = profile.phone || "N/A";
+        const headline = profile.headline || "";
+        const location = profile.location || "";
+        const summary = profile.summary || profile.objective || profile.professional_summary || profile.about || "No summary extracted.";
+        
+        const domain = profile.primary_domain || "N/A";
+        const level = profile.career_level || "N/A";
+
+        const linkedin = profile.linkedin || "";
+        const github = profile.github || "";
+        const portfolio = profile.portfolio || "";
+        const website = profile.website || "";
+
+        let skillsList = [];
+        if (Array.isArray(profile.skills)) skillsList = skillsList.concat(profile.skills);
+        if (Array.isArray(profile.technical_skills)) skillsList = skillsList.concat(profile.technical_skills);
+        if (Array.isArray(profile.soft_skills)) skillsList = skillsList.concat(profile.soft_skills);
+        if (Array.isArray(profile.programming_languages)) skillsList = skillsList.concat(profile.programming_languages);
+        if (Array.isArray(profile.frameworks)) skillsList = skillsList.concat(profile.frameworks);
+        if (Array.isArray(profile.tools)) skillsList = skillsList.concat(profile.tools);
+        if (Array.isArray(profile.databases)) skillsList = skillsList.concat(profile.databases);
+        if (Array.isArray(profile.cloud_platforms)) skillsList = skillsList.concat(profile.cloud_platforms);
+        
+        const skills = [...new Set(skillsList)].filter(s => s && s.trim());
+        const exp = profile.experience || [];
+        const edu = profile.education || [];
+        const projects = profile.projects || [];
+        const internships = profile.internships || [];
+        const certs = profile.certifications || [];
+        const strengths = profile.top_strengths || [];
+        const concerns = profile.potential_concerns || [];
+        const achievements = profile.achievements || [];
+        const languages = profile.languages || [];
+
+        let linksHtml = '';
+        if (linkedin) linksHtml += `<a href="${linkedin}" target="_blank" class="px-2.5 py-1 rounded bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 text-[10px] font-semibold transition-colors">LinkedIn</a>`;
+        if (github) linksHtml += `<a href="${github}" target="_blank" class="px-2.5 py-1 rounded bg-slate-500/10 border border-slate-500/30 text-slate-300 hover:bg-slate-500/20 text-[10px] font-semibold transition-colors">GitHub</a>`;
+        if (portfolio) linksHtml += `<a href="${portfolio}" target="_blank" class="px-2.5 py-1 rounded bg-teal-500/10 border border-teal-500/30 text-teal-400 hover:bg-teal-500/20 text-[10px] font-semibold transition-colors">Portfolio</a>`;
+        if (website) linksHtml += `<a href="${website}" target="_blank" class="px-2.5 py-1 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 text-[10px] font-semibold transition-colors">Website</a>`;
+
+        html = `
+          <div class="space-y-5 text-xs">
+            <!-- Candidate Title Block -->
+            <div class="border-b border-slate-800 pb-3.5">
+              <div class="flex justify-between items-start">
+                <h3 class="text-base font-extrabold text-white leading-tight">${name}</h3>
+                <span class="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${level}</span>
+              </div>
+              ${headline ? `<p class="text-indigo-300 font-semibold text-xs mt-1">${headline}</p>` : ''}
+              <p class="text-slate-400 mt-1.5 text-[10px] leading-relaxed">
+                ${location ? `📍 ${location} &nbsp;•&nbsp; ` : ''} 📧 ${email} ${phone ? ` &nbsp;•&nbsp; 📞 ${phone}` : ''}
+              </p>
+              ${linksHtml ? `<div class="flex gap-2 mt-3">${linksHtml}</div>` : ''}
+            </div>
+
+            <!-- Primary Domain Block -->
+            <div class="grid grid-cols-1 gap-3">
+              <div class="bg-slate-900/40 p-2.5 rounded border border-slate-800/60">
+                <span class="text-[9px] uppercase text-slate-500 block font-bold">Primary Domain</span>
+                <span class="text-xs font-bold text-white block mt-0.5">${domain}</span>
+              </div>
+            </div>
+
+            <!-- Professional Summary -->
+            <div>
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1">Professional Summary</span>
+              <p class="text-slate-300 leading-relaxed">${summary}</p>
+            </div>
+
+            <!-- Strengths & Concerns Grid -->
+            ${(strengths.length > 0 || concerns.length > 0) ? `
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-800/60 pt-3">
+                ${strengths.length > 0 ? `
+                  <div>
+                    <span class="text-[10px] uppercase font-bold text-emerald-400 block mb-2">Top Strengths</span>
+                    <ul class="space-y-1.5">
+                      ${strengths.map(s => `<li class="flex items-start gap-1.5 text-slate-300"><span class="text-emerald-400 font-bold">✓</span><span>${s}</span></li>`).join('')}
+                    </ul>
+                  </div>
+                ` : ''}
+                ${concerns.length > 0 ? `
+                  <div>
+                    <span class="text-[10px] uppercase font-bold text-amber-400 block mb-2">Potential Concerns</span>
+                    <ul class="space-y-1.5">
+                      ${concerns.map(c => `<li class="flex items-start gap-1.5 text-slate-300"><span class="text-amber-400 font-bold">⚠</span><span>${c}</span></li>`).join('')}
+                    </ul>
+                  </div>
+                ` : ''}
+              </div>
+            ` : ''}
+
+            <!-- Extracted Skills -->
+            <div class="border-t border-slate-800/60 pt-3">
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-2">Extracted Skills</span>
+              <div class="flex flex-wrap gap-1.5">
+                ${skills.map(s => `<span class="bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/20 text-[10px] font-semibold">${s}</span>`).join('') || '<span class="text-slate-500">None detected</span>'}
+              </div>
+            </div>
+
+            <!-- Projects Grid -->
+            ${projects.length > 0 ? `
+              <div class="border-t border-slate-800/60 pt-3">
+                <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-2.5">Projects Portfolio</span>
+                <div class="grid grid-cols-1 gap-2.5">
+                  ${projects.map(p => `
+                    <div class="bg-slate-900/30 p-3 rounded border border-slate-800">
+                      <div class="flex justify-between items-start gap-2">
+                        <span class="font-bold text-white text-xs">${p.title || 'Project'}</span>
+                        <div class="flex gap-2">
+                          ${p.github ? `<a href="${p.github}" target="_blank" class="text-[9px] font-bold text-indigo-400 hover:underline">GitHub</a>` : ''}
+                          ${p.demo ? `<a href="${p.demo}" target="_blank" class="text-[9px] font-bold text-teal-400 hover:underline">Demo</a>` : ''}
+                        </div>
+                      </div>
+                      ${p.description ? `<p class="text-slate-400 mt-1 text-[11px] leading-relaxed">${p.description}</p>` : ''}
+                      ${(p.technologies && p.technologies.length > 0) ? `
+                        <div class="flex flex-wrap gap-1 mt-2">
+                          ${p.technologies.map(t => `<span class="text-[9px] text-slate-500 px-1 bg-white/5 border border-white/5 rounded">${t}</span>`).join('')}
+                        </div>
+                      ` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- Work Experience Timeline -->
+            <div class="border-t border-slate-800/60 pt-3">
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-2.5">Work History</span>
+              <div class="space-y-3">
+                ${exp.map(e => `
+                  <div class="bg-slate-900/40 p-3 rounded border border-slate-800/60">
+                    <div class="flex justify-between font-semibold text-white text-xs">
+                      <span>${e.title || 'Role'}</span>
+                      <span class="text-slate-400 text-[10px]">${e.duration || ''}</span>
+                    </div>
+                    <div class="text-[10px] text-indigo-300 mt-0.5 font-semibold">${e.company || ''} ${e.employment_type ? `(${e.employment_type})` : ''}</div>
+                    ${(e.responsibilities && e.responsibilities.length > 0) ? `
+                      <ul class="list-disc pl-4 mt-2 text-slate-300 space-y-1 text-[11px] leading-relaxed">
+                        ${e.responsibilities.map(r => `<li>${r}</li>`).join('')}
+                      </ul>
+                    ` : ''}
+                    ${(e.achievements && e.achievements.length > 0) ? `
+                      <div class="mt-2 text-[11px]">
+                        <span class="font-bold text-teal-400 block">Key Achievements:</span>
+                        <ul class="list-disc pl-4 mt-0.5 text-slate-300 space-y-0.5">
+                          ${e.achievements.map(a => `<li>${a}</li>`).join('')}
+                        </ul>
+                      </div>
+                    ` : ''}
+                  </div>
+                `).join('') || '<span class="text-slate-500">No work history parsed.</span>'}
+              </div>
+            </div>
+
+            <!-- Internships -->
+            ${internships.length > 0 ? `
+              <div class="border-t border-slate-800/60 pt-3">
+                <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-2.5">Internships</span>
+                <div class="space-y-2">
+                  ${internships.map(i => `
+                    <div class="bg-slate-900/40 p-2.5 rounded border border-slate-800/60">
+                      <div class="flex justify-between font-semibold text-white">
+                        <span>${i.role || 'Intern'}</span>
+                        <span class="text-slate-400">${i.duration || ''}</span>
+                      </div>
+                      <div class="text-[10px] text-indigo-300 mt-0.5 font-semibold">${i.company || ''}</div>
+                      ${i.summary ? `<p class="text-slate-400 mt-1 leading-relaxed text-[11px]">${i.summary}</p>` : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- Education -->
+            <div class="border-t border-slate-800/60 pt-3">
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-2.5">Education</span>
+              <div class="space-y-2">
+                ${edu.map(ed => `
+                  <div class="bg-slate-900/40 p-2.5 rounded border border-slate-800/60">
+                    <div class="flex justify-between font-semibold text-white">
+                      <span>${ed.degree || 'Degree'} ${ed.branch ? `in ${ed.branch}` : ''}</span>
+                      <span class="text-slate-400">${ed.year || ''}</span>
+                    </div>
+                    <div class="text-[10px] text-indigo-300 mt-0.5 font-semibold">${ed.institution || ''}</div>
+                    ${ed.cgpa ? `<div class="text-slate-400 text-[10px] mt-0.5">CGPA/Grade: ${ed.cgpa}</div>` : ''}
+                  </div>
+                `).join('') || '<span class="text-slate-500">No education parsed.</span>'}
+              </div>
+            </div>
+
+            <!-- Certifications, Achievements, Languages Grid -->
+            ${(certs.length > 0 || achievements.length > 0 || languages.length > 0) ? `
+              <div class="border-t border-slate-800/60 pt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                ${certs.length > 0 ? `
+                  <div>
+                    <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1.5">Certifications</span>
+                    <ul class="list-disc pl-4 text-slate-300 space-y-1">
+                      ${certs.map(c => `<li>${c}</li>`).join('')}
+                    </ul>
+                  </div>
+                ` : ''}
+                ${achievements.length > 0 ? `
+                  <div>
+                    <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1.5">Achievements</span>
+                    <ul class="list-disc pl-4 text-slate-300 space-y-1">
+                      ${achievements.map(a => `<li>${a}</li>`).join('')}
+                    </ul>
+                  </div>
+                ` : ''}
+                ${languages.length > 0 ? `
+                  <div class="md:col-span-2">
+                    <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1">Languages</span>
+                    <p class="text-slate-300">${languages.join(', ')}</p>
+                  </div>
+                ` : ''}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      } else if (tabId === 'jd') {
+        const blueprint = resolveParsedObject(data);
+        const title = blueprint.title || "N/A";
+        const exp = blueprint.experience || "N/A";
+        const reqSkills = blueprint.required_skills || [];
+        const prefSkills = blueprint.preferred_skills || [];
+        const domain = blueprint.domain || "N/A";
+
+        html = `
+          <div class="space-y-4 text-xs">
+            <div class="border-b border-slate-800 pb-3">
+              <h3 class="text-base font-bold text-white">${title}</h3>
+              <p class="text-slate-400 mt-1">Experience Required: ${exp} • Domain: ${domain}</p>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-teal-400 block mb-1.5">Required Skills</span>
+              <div class="flex flex-wrap gap-1.5">
+                ${reqSkills.map(s => `<span class="bg-teal-500/10 text-teal-300 px-2.5 py-0.5 rounded border border-teal-500/20 text-[10px]">${s}</span>`).join('') || '<span class="text-slate-500">None specified</span>'}
+              </div>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1.5">Preferred Skills</span>
+              <div class="flex flex-wrap gap-1.5">
+                ${prefSkills.map(s => `<span class="bg-indigo-500/10 text-indigo-300 px-2.5 py-0.5 rounded border border-indigo-500/20 text-[10px]">${s}</span>`).join('') || '<span class="text-slate-500">None specified</span>'}
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (tabId === 'match') {
+        const fit = data.fit_percentage || data.score || 0;
+        const summary = data.alignment_summary || data.summary || "No summary analysis available.";
+        const gaps = data.skills_gap || [];
+        
+        html = `
+          <div class="space-y-4 text-xs">
+            <div class="flex items-center gap-4 border-b border-slate-800 pb-3">
+              <div class="w-14 h-14 rounded-full flex items-center justify-center border-2 border-indigo-500 text-white font-extrabold text-lg bg-indigo-500/10">
+                ${fit}%
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-white">Readiness Match Alignment</h3>
+                <p class="text-[10px] text-slate-400 mt-0.5">Automated screening metrics</p>
+              </div>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1">Alignment Summary</span>
+              <p class="text-slate-300 leading-relaxed">${summary}</p>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-rose-400 block mb-1.5">Identified Skills Gaps</span>
+              <div class="flex flex-wrap gap-1.5">
+                ${gaps.map(g => `<span class="bg-rose-500/10 text-rose-300 px-2.5 py-0.5 rounded border border-rose-500/20 text-[10px]">${g}</span>`).join('') || '<span class="text-emerald-400 font-semibold">Perfect skills alignment! No gaps detected.</span>'}
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (tabId === 'judge') {
+        const score = data.accuracy || 0;
+        const depth = data.depth || 0;
+        const comm = data.communication || 0;
+        const feed = data.feedback || "No evaluator comments.";
+        
+        html = `
+          <div class="space-y-4 text-xs">
+            <div class="border-b border-slate-800 pb-3">
+              <h3 class="text-sm font-bold text-white">Evaluator Transcript Assessment</h3>
+            </div>
+            <div class="space-y-2">
+              <div>
+                <div class="flex justify-between mb-1 text-[10px] font-semibold text-slate-300">
+                  <span>Accuracy</span>
+                  <span>${score}%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-teal-400 h-full rounded-full" style="width: ${score}%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between mb-1 text-[10px] font-semibold text-slate-300">
+                  <span>Technical Depth</span>
+                  <span>${depth}%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-indigo-400 h-full rounded-full" style="width: ${depth}%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between mb-1 text-[10px] font-semibold text-slate-300">
+                  <span>Communication & Delivery</span>
+                  <span>${comm}%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-amber-400 h-full rounded-full" style="width: ${comm}%"></div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-slate-900/60 p-3 rounded border border-slate-800">
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1">Evaluator Feedback</span>
+              <p class="text-slate-300 leading-relaxed">${feed}</p>
+            </div>
+          </div>
+        `;
+      } else if (tabId === 'report') {
+        const score = data.overall_score || data.score || 0;
+        const recommendation = data.recommendation || "Needs Review";
+        const strengths = data.strengths || [];
+        const gaps = data.gaps || [];
+
+        html = `
+          <div class="space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="text-base font-bold text-white">Assessment Candidate Report</h3>
+                <p class="text-[10px] text-slate-400 mt-0.5">Recommendation: <span class="font-bold text-indigo-400">${recommendation}</span></p>
+              </div>
+              <div class="text-right">
+                <span class="text-2xl font-black text-white">${score}%</span>
+                <span class="text-[9px] text-slate-500 block">Overall Score</span>
+              </div>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-emerald-400 block mb-1.5">Top Strengths</span>
+              <ul class="list-disc pl-4 text-slate-300 space-y-1">
+                ${strengths.map(s => `<li>${s}</li>`).join('') || '<li>None recorded.</li>'}
+              </ul>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-rose-400 block mb-1.5">Identified Gaps</span>
+              <ul class="list-disc pl-4 text-slate-300 space-y-1">
+                ${gaps.map(g => `<li>${g}</li>`).join('') || '<li>None recorded.</li>'}
+              </ul>
+            </div>
+          </div>
+        `;
+      } else {
+        html = `<div class="text-center py-10 text-xs text-slate-500">Visual layout view for this agent is coming soon.</div>`;
+      }
+
+      container.innerHTML = html;
     }
 
     // Ping Backend Base Server & Expose Latency
@@ -553,7 +1027,6 @@ Requirements:
         } catch (err) {
           const latency = Math.round(performance.now() - start);
           if (err.name === 'AbortError' || err.message.includes('Failed to fetch')) {
-            // Check if it's CORS blocks causing failure but still responding
             if (latency > 10 && latency < 2000) {
               row.innerHTML = `
                 <span class="text-slate-300 font-medium">${agent.name}:</span>
@@ -583,7 +1056,9 @@ Requirements:
 
     // Display formatted response JSON
     function displayResponse(code, data, latency) {
+      lastFetchedResponse = data;
       document.getElementById('response-code').innerText = code;
+      
       const responseArea = document.getElementById('raw-response');
       responseArea.value = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
       document.getElementById('api-latency').innerText = `Time: ${latency} ms`;
@@ -591,8 +1066,15 @@ Requirements:
       const codeBadge = document.getElementById('response-code');
       if (code >= 200 && code < 300) {
         codeBadge.className = "text-[10px] px-2 py-0.5 rounded border border-emerald-500/20 text-emerald-400 bg-emerald-500/10 font-bold";
+        // Update visual preview box too
+        renderVisualPreview(activeTabId, data);
       } else {
         codeBadge.className = "text-[10px] px-2 py-0.5 rounded border border-rose-500/20 text-rose-400 bg-rose-500/10 font-bold";
+        document.getElementById('visual-preview-container').innerHTML = `
+          <div class="text-rose-400 text-xs p-4 bg-rose-500/5 border border-rose-500/10 rounded-lg">
+            <strong>Error ${code}</strong>: Failed to compute agent. Inspect the JSON Response tab for more details.
+          </div>
+        `;
       }
     }
 
