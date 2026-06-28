@@ -23,6 +23,7 @@ export default function Header() {
     { path: '/recruiter', label: 'Recruiter Workspace' },
     { path: '/recruiter/create', label: 'Create Assessment' },
     { path: '/student', label: 'Student Path' },
+    { path: '/student/leaderboard', label: 'Leaderboard' },
   ];
 
   return (
@@ -75,15 +76,15 @@ export default function Header() {
             style={{ borderColor: 'var(--color-border-subtle)' }}
           >
             <GraduationCap className="w-3.5 h-3.5" />
-            Student
+            Student Workspace
           </Link>
 
           <Link
-            to="/recruiter/create"
+            to="/recruiter"
             className="inline-flex items-center justify-center gap-1.5 bg-blue-600 text-white text-xs font-semibold py-2 px-3 md:px-4 rounded-md hover:bg-blue-700 transition-colors duration-200"
           >
             <Building2 className="w-3.5 h-3.5" />
-            Recruiter Start
+            Recruiter Portal
           </Link>
         </div>
       </div>

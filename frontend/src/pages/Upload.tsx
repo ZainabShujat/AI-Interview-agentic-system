@@ -106,7 +106,7 @@ export default function Upload() {
 
   const currentQuestion = intakeQuestions[stage];
   const intakeComplete = stage >= intakeQuestions.length;
-  const totalStages = 15;
+  const totalStages = 12;
   const progress = Math.min(100, Math.round(((stage + 2) / totalStages) * 100));
 
   const assessmentBlueprint = useMemo(() => {
@@ -424,75 +424,67 @@ export default function Upload() {
 
               {stage === 11 && (
                 <Panel
-                  eyebrow="Upload Candidate Resume"
-                  title="Run the Resume Agent after blueprint approval"
-                  description="The candidate is screened only after role expectations are explicit and recruiter-approved."
-                  icon={<UploadIcon className="w-6 h-6" />}
-                >
-                  <FileDrop file={resumeFile} onFile={setResumeFile} label="Candidate Resume" accept=".pdf" />
-                  <FooterActions
-                    onBack={() => setStage(10)}
-                    primaryLabel="Analyze Resume"
-                    onPrimary={uploadResume}
-                    loading={loading}
-                    loadingLabel={status}
-                    error={error}
-                  />
-                </Panel>
-              )}
-
-              {stage === 12 && (
-                <Panel
-                  eyebrow="Resume Agent Analysis"
-                  title="Candidate evidence summary"
-                  description="Review the structured profile extracted from the resume before computing fit."
-                  icon={<Users className="w-6 h-6" />}
-                >
-                  <ResumeSummary summary={resumeSummary} />
-                  <FooterActions
-                    onBack={() => setStage(11)}
-                    primaryLabel="Run Deterministic Match"
-                    onPrimary={runMatch}
-                    loading={loading}
-                    loadingLabel={status}
-                    error={error}
-                  />
-                </Panel>
-              )}
-
-              {stage === 13 && matchAnalysis && (
-                <Panel
-                  eyebrow="Deterministic Match Analysis"
-                  title="Transparent role fit calculation"
-                  description="The match percentage is computed in backend code from structured skills and domain signals. Gemini is not inventing this score."
-                  icon={<ClipboardCheck className="w-6 h-6" />}
-                >
-                  <MatchSummary data={matchAnalysis} />
-                  <FooterActions
-                    onBack={() => setStage(12)}
-                    primaryLabel="View Assessment Blueprint"
-                    onPrimary={() => setStage(14)}
-                    error={error}
-                  />
-                </Panel>
-              )}
-
-              {stage === 14 && (
-                <Panel
-                  eyebrow="Assessment Blueprint"
-                  title="Ready to start interview"
-                  description="The final assessment plan is based on recruiter-approved role requirements and deterministic candidate fit."
+                  eyebrow="Blueprint Created & Published"
+                  title="Your assessment is ready!"
+                  description="A structured hiring blueprint has been created for this role. Share the invitation link below with your candidates to screen them."
                   icon={<CheckCircle2 className="w-6 h-6" />}
                 >
-                  <AssessmentBlueprint blueprint={assessmentBlueprint} matchAnalysis={matchAnalysis} />
-                  <FooterActions
-                    onBack={() => setStage(13)}
-                    primaryLabel="Start Interview"
-                    onPrimary={startInterview}
-                    loading={loading}
-                    loadingLabel={status}
-                    error={error}
-                  />
+                  <div className="space-y-6">
+                    <div className="rounded-lg border border-subtle p-5 bg-blue-600/10 border-blue-500/20">
+                      <span className="text-[10px] uppercase tracking-widest font-bold text-blue-400 block mb-2">Shareable Candidate Invitation URL</span>
+                      <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                        <input
+                          readOnly
+                          className="input-base !bg-dark-900/40 text-xs flex-grow"
+                          value={`${window.location.protocol}//${window.location.host}/assessment/take/${jdIdLocal}`}
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.protocol}//${window.location.host}/assessment/take/${jdIdLocal}`);
+                            alert('Link copied to clipboard!');
+                          }}
+                          className="btn-base btn-primary text-xs py-2 px-4 justify-center"
+                        >
+                          Copy Link
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-theme-secondary mt-2">
+                        Candidates will upload their resumes, run fit analysis, and complete the adaptive interview under this specific job context.
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-subtle p-5" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
+                      <span className="text-[10px] uppercase tracking-widest font-bold text-theme-tertiary block mb-3">Assessment Role Blueprint Details</span>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                        <div>
+                          <span className="font-semibold text-theme-tertiary block">Position</span>
+                          <span className="text-white">{blueprint.title}</span>
+                        </div>
+                        <div>
+                          <span className="font-semibold text-theme-tertiary block">Seniority</span>
+                          <span className="text-white">{blueprint.seniority}</span>
+                        </div>
+                        <div>
+                          <span className="font-semibold text-theme-tertiary block">Industry</span>
+                          <span className="text-white">{blueprint.industry}</span>
+                        </div>
+                        <div>
+                          <span className="font-semibold text-theme-tertiary block">Estimated Duration</span>
+                          <span className="text-white">40 Minutes</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-8 mt-8 border-t border-subtle flex justify-end">
+                    <button
+                      onClick={() => navigate('/recruiter')}
+                      className="btn-base btn-primary px-6 gap-2"
+                    >
+                      <span>Return to Recruiter Dashboard</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </Panel>
               )}
             </motion.div>
@@ -579,9 +571,7 @@ function StepList({ activeStage }: { activeStage: number }) {
     ['Recruiter Intake', activeStage >= 0],
     ['JD Agent Analysis', activeStage >= 9],
     ['Hiring Blueprint', activeStage >= 10],
-    ['Resume Agent', activeStage >= 11],
-    ['Match Analysis', activeStage >= 13],
-    ['Assessment Blueprint', activeStage >= 14],
+    ['Blueprint Published', activeStage >= 11],
   ];
 
   return (

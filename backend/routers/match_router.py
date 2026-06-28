@@ -34,3 +34,26 @@ async def match_resume_jd(payload: schemas.MatchRequest, db: Session = Depends(g
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error matching profiles: {str(e)}")
+
+from pydantic import BaseModel
+from typing import Dict, Any
+
+class RawMatchRequest(BaseModel):
+    resume_json: Dict[str, Any]
+    jd_json: Dict[str, Any]
+
+@router.post("/raw")
+async def match_raw_resume_jd(payload: RawMatchRequest):
+    try:
+        # Match deterministically in backend code
+        match_result = gemini_service.deterministic_match_resume_and_jd(
+            payload.resume_json,
+            payload.jd_json
+        )
+        match_result["assessmentBlueprint"] = gemini_service.generate_assessment_blueprint(
+            payload.jd_json,
+            match_result
+        )
+        return match_result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error matching raw profiles: {str(e)}")

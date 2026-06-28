@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload as UploadIcon, FileText, ArrowRight, Loader2, Trophy, UserRoundCheck } from 'lucide-react';
 import axios from 'axios';
@@ -7,6 +7,7 @@ import { useSession } from '../App';
 
 export default function StudentAssessment() {
   const navigate = useNavigate();
+  const { jdId: pathJdId } = useParams<{ jdId?: string }>();
   const { setResumeId, setJdId } = useSession();
 
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -14,6 +15,7 @@ export default function StudentAssessment() {
   const [jdText, setJdText] = useState('');
   const [jdMode, setJdMode] = useState<'existing' | 'upload' | 'paste'>('existing');
   const [existingJds, setExistingJds] = useState<any[]>([]);
+  const [preSelectedJd, setPreSelectedJd] = useState<any | null>(null);
   const [selectedJdId, setSelectedJdId] = useState('');
   const [loading, setLoading] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
@@ -30,7 +32,23 @@ export default function StudentAssessment() {
       try {
         const res = await axios.get('/api/jd');
         setExistingJds(res.data || []);
-        if (res.data?.[0]?.id) {
+        
+        if (pathJdId) {
+          const found = (res.data || []).find((j: any) => String(j.id) === String(pathJdId));
+          if (found) {
+            setPreSelectedJd(found);
+            setSelectedJdId(pathJdId);
+            setJdMode('existing');
+          } else {
+            // If ID is not in active list (e.g. newly loaded but not in top 50), try to fetch details
+            try {
+              // Wait, we can query details or default selection
+              if (res.data?.[0]?.id) {
+                setSelectedJdId(res.data[0].id);
+              }
+            } catch (err) {}
+          }
+        } else if (res.data?.[0]?.id) {
           setSelectedJdId(res.data[0].id);
         } else {
           setJdMode('paste');
@@ -42,7 +60,7 @@ export default function StudentAssessment() {
     };
 
     fetchJds();
-  }, []);
+  }, [pathJdId]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -172,81 +190,94 @@ export default function StudentAssessment() {
                 </div>
               </div>
 
-              <div className="flex flex-col">
+              <div className="flex flex-col justify-between h-full">
                 <label className="text-sm font-semibold text-theme-primary mb-3 block">
                   Target Job
                 </label>
-                <div className="rounded-xl border border-subtle p-4 space-y-4 flex-grow" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      ['existing', 'Existing JD'],
-                      ['upload', 'Upload JD'],
-                      ['paste', 'Paste JD'],
-                    ].map(([mode, label]) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => setJdMode(mode as any)}
-                        className="text-xs font-bold rounded-md border px-2 py-2"
-                        style={{
-                          borderColor: jdMode === mode ? 'var(--color-border-hover)' : 'var(--color-border-subtle)',
-                          backgroundColor: jdMode === mode ? 'var(--color-mauve-strong)' : 'transparent',
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                {preSelectedJd ? (
+                  <div className="rounded-xl border border-subtle p-5 flex-grow flex flex-col justify-center" style={{ backgroundColor: 'var(--color-bg-primary)', borderColor: 'var(--color-border-subtle)' }}>
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-blue-400 block mb-2">Assigned Recruiter Assessment</span>
+                    <h4 className="text-base font-bold text-white leading-tight">{preSelectedJd.title}</h4>
+                    <p className="text-xs text-theme-secondary mt-1">
+                      {preSelectedJd.department || 'General'} • {preSelectedJd.seniority || 'Mid Level'}
+                    </p>
+                    <p className="text-[11px] mt-4 text-emerald-400 font-medium">
+                      ✓ Target role requirements are recruiter-approved
+                    </p>
                   </div>
-
-                  {jdMode === 'existing' && (
-                    <div className="space-y-3">
-                      {existingJds.length > 0 ? (
-                        <select
-                          className="input-base"
-                          value={selectedJdId}
-                          onChange={(event) => setSelectedJdId(event.target.value)}
+                ) : (
+                  <div className="rounded-xl border border-subtle p-4 space-y-4 flex-grow" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        ['existing', 'Existing JD'],
+                        ['upload', 'Upload JD'],
+                        ['paste', 'Paste JD'],
+                      ].map(([mode, label]) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setJdMode(mode as any)}
+                          className="text-xs font-bold rounded-md border px-2 py-2"
+                          style={{
+                            borderColor: jdMode === mode ? 'var(--color-border-hover)' : 'var(--color-border-subtle)',
+                            backgroundColor: jdMode === mode ? 'var(--color-mauve-strong)' : 'transparent',
+                          }}
                         >
-                          {existingJds.map((jd) => (
-                            <option key={jd.id} value={jd.id}>
-                              {jd.title} {jd.seniority ? `- ${jd.seniority}` : ''}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <p className="text-xs text-theme-secondary">
-                          No recruiter-created JDs yet. Upload or paste a JD to create the first shared benchmark.
-                        </p>
-                      )}
+                          {label}
+                        </button>
+                      ))}
                     </div>
-                  )}
 
-                  {jdMode === 'upload' && (
-                    <div className="rounded-lg border border-dashed p-6 text-center" style={{ borderColor: 'var(--color-border-hover)' }}>
-                      <input
-                        id="student-jd-file"
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.txt,.md"
-                        onChange={(event) => setJdFile(event.target.files?.[0] || null)}
+                    {jdMode === 'existing' && (
+                      <div className="space-y-3">
+                        {existingJds.length > 0 ? (
+                          <select
+                            className="input-base"
+                            value={selectedJdId}
+                            onChange={(event) => setSelectedJdId(event.target.value)}
+                          >
+                            {existingJds.map((jd) => (
+                              <option key={jd.id} value={jd.id}>
+                                {jd.title} {jd.seniority ? `- ${jd.seniority}` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <p className="text-xs text-theme-secondary">
+                            No recruiter-created JDs yet. Upload or paste a JD to create the first shared benchmark.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {jdMode === 'upload' && (
+                      <div className="rounded-lg border border-dashed p-6 text-center" style={{ borderColor: 'var(--color-border-hover)' }}>
+                        <input
+                          id="student-jd-file"
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.txt,.md"
+                          onChange={(event) => setJdFile(event.target.files?.[0] || null)}
+                        />
+                        <label htmlFor="student-jd-file" className="cursor-pointer flex flex-col items-center">
+                          <FileText className="w-8 h-8 mb-3" />
+                          <span className="text-sm font-semibold text-theme-primary">{jdFile ? jdFile.name : 'Upload JD file'}</span>
+                          <span className="text-xs text-theme-tertiary mt-1">PDF, TXT, or Markdown</span>
+                        </label>
+                      </div>
+                    )}
+
+                    {jdMode === 'paste' && (
+                      <textarea
+                        id="student-jd-input"
+                        className="input-base resize-none text-sm min-h-[190px] p-4"
+                        placeholder="Paste the job description you want to benchmark yourself against..."
+                        value={jdText}
+                        onChange={(event) => setJdText(event.target.value)}
                       />
-                      <label htmlFor="student-jd-file" className="cursor-pointer flex flex-col items-center">
-                        <FileText className="w-8 h-8 mb-3" />
-                        <span className="text-sm font-semibold text-theme-primary">{jdFile ? jdFile.name : 'Upload JD file'}</span>
-                        <span className="text-xs text-theme-tertiary mt-1">PDF, TXT, or Markdown</span>
-                      </label>
-                    </div>
-                  )}
-
-                  {jdMode === 'paste' && (
-                    <textarea
-                      id="student-jd-input"
-                      className="input-base resize-none text-sm min-h-[190px] p-4"
-                      placeholder="Paste the job description you want to benchmark yourself against..."
-                      value={jdText}
-                      onChange={(event) => setJdText(event.target.value)}
-                    />
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

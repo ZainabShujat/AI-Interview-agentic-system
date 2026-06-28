@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from database import get_db
@@ -42,10 +43,17 @@ async def start_interview(payload: schemas.InterviewStartRequest, db: Session = 
             memory=None
         )
         
+        # Extract candidate name and email from parsed resume details
+        parsed_resume = resume.parsed_json or {}
+        cand_name = parsed_resume.get("candidate_name") or "Candidate"
+        cand_email = parsed_resume.get("email") or "candidate@email.com"
+
         # Create Interview record
         db_interview = models.Interview(
             resume_id=resume.id,
             jd_id=jd.id,
+            candidate_name=cand_name,
+            candidate_email=cand_email,
             status="active",
             current_question_index=0,
             difficulty_level=first_difficulty,
@@ -279,3 +287,77 @@ async def download_report_pdf(interview_id: str, db: Session = Depends(get_db)):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error compiling PDF: {str(e)}")
+
+@router.get("/reports")
+async def list_reports(jd_id: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(models.Interview)
+    if jd_id:
+        query = query.filter(models.Interview.jd_id == jd_id)
+    interviews = query.order_by(models.Interview.created_at.desc()).all()
+    
+    results = []
+    for interview in interviews:
+        report = db.query(models.Report).filter(models.Report.interview_id == interview.id).first()
+        resume = db.query(models.Resume).filter(models.Resume.id == interview.resume_id).first()
+        jd = db.query(models.JobDescription).filter(models.JobDescription.id == interview.jd_id).first()
+        
+        parsed_resume = resume.parsed_json if resume else {}
+        parsed_jd = jd.parsed_json if jd else {}
+        
+        report_data = report.report_json if report else {}
+        overall_score = report_data.get("overallScore", 0)
+        recommendation = report_data.get("recommendation", "Pending")
+        
+        if not overall_score and parsed_resume and parsed_jd:
+            try:
+                match = gemini_service.match_resume_and_jd(parsed_resume, parsed_jd)
+                overall_score = match.get("matchScore", 60)
+            except Exception:
+                overall_score = 60
+                
+        results.append({
+            "interview_id": interview.id,
+            "candidate_name": parsed_resume.get("candidate_name") or interview.candidate_name or "Candidate",
+            "candidate_email": parsed_resume.get("email") or interview.candidate_email or "candidate@email.com",
+            "job_title": parsed_jd.get("title") or "Software Engineer",
+            "jd_id": interview.jd_id,
+            "score": overall_score,
+            "recommendation": recommendation,
+            "status": "Completed" if interview.status == "completed" else "In Progress",
+            "date": interview.created_at.strftime("%Y-%m-%d") if interview.created_at else None
+        })
+    return results
+
+class JudgeRequest(BaseModel):
+    question: str
+    answer: str
+    signals: schemas.ConfidenceSignals
+
+@router.post("/judge")
+async def judge_answer_endpoint(payload: JudgeRequest):
+    try:
+        evaluation = gemini_service.judge_answer(
+            question=payload.question,
+            answer=payload.answer,
+            signals=payload.signals.model_dump()
+        )
+        return evaluation
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error evaluating response: {str(e)}")
+
+from typing import List
+
+class RawReportRequest(BaseModel):
+    all_qa: List[Dict[str, Any]]
+    memory: Dict[str, Any]
+
+@router.post("/report/raw")
+async def generate_raw_report(payload: RawReportRequest):
+    try:
+        report = gemini_service.generate_final_report(
+            all_qa=payload.all_qa,
+            memory=payload.memory
+        )
+        return report
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error compiling report: {str(e)}")

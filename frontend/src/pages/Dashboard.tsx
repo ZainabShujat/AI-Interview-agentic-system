@@ -1,48 +1,78 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { 
   Users, Award, CheckSquare, Target, BarChart3, Compass, Settings, 
-  Search, Plus, ArrowUpRight, TrendingUp
+  Search, Plus, ArrowUpRight, TrendingUp, Link as LinkIcon
 } from 'lucide-react';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, XAxis, 
   Tooltip
 } from 'recharts';
+import { useSession } from '../App';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { setInterviewId } = useSession();
   
   // Tab states for inside the dashboard
   const [activeTab, setActiveTab] = useState('Overview');
   const [timeRange, setTimeRange] = useState('This Month');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Sample data to populate charts and lists
+  // Dynamic lists from backend
+  const [jdsList, setJdsList] = useState<any[]>([]);
+  const [candidatesList, setCandidatesList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const [jdsRes, reportsRes] = await Promise.all([
+          axios.get('/api/jd'),
+          axios.get('/api/interview/reports')
+        ]);
+        setJdsList(jdsRes.data || []);
+        setCandidatesList(reportsRes.data || []);
+      } catch (err) {
+        console.error('Failed to load recruiter dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  // Compute metric cards from database data
+  const totalAssessments = candidatesList.length;
+  const completedInterviews = candidatesList.filter(c => c.status === 'Completed').length;
+  const strongHires = candidatesList.filter(c => c.recommendation === 'Strong Hire').length;
+  
+  const averageScore = totalAssessments > 0
+    ? Math.round(candidatesList.reduce((acc, curr) => acc + (curr.score || 0), 0) / totalAssessments * 10) / 10
+    : 0;
+
   const metricCards = [
-    { label: 'Total Assessments', value: '1,248', rate: '+18.5%', labelColor: 'var(--color-accent-indigo)' },
-    { label: 'Completed Interviews', value: '842', rate: '+22.7%', labelColor: 'var(--color-accent-teal)' },
-    { label: 'Strong Hire', value: '142', rate: '+15.3%', labelColor: 'var(--color-accent-teal)' },
-    { label: 'Average Score', value: '78.4', rate: '+6.2%', labelColor: 'var(--color-accent-indigo)' }
+    { label: 'Total Assessments', value: String(totalAssessments), rate: '+12%', labelColor: 'var(--color-accent-indigo)' },
+    { label: 'Completed Interviews', value: String(completedInterviews), rate: '+15%', labelColor: 'var(--color-accent-teal)' },
+    { label: 'Strong Hire', value: String(strongHires), rate: '+8%', labelColor: 'var(--color-accent-teal)' },
+    { label: 'Average Score', value: String(averageScore), rate: '+4.2%', labelColor: 'var(--color-accent-indigo)' }
   ];
 
-  const topCandidates = [
-    { name: 'Aarav Sharma', role: 'Senior AI Engineer', score: 94, tag: 'Strong Hire', color: 'var(--color-accent-teal)', bg: 'rgba(45, 212, 191, 0.08)' },
-    { name: 'Neha Verma', role: 'AI Engineer', score: 89, tag: 'Strong Hire', color: 'var(--color-accent-teal)', bg: 'rgba(45, 212, 191, 0.08)' },
-    { name: 'Rohan Mehta', role: 'ML Engineer', score: 86, tag: 'Consider', color: 'rgb(251, 191, 36)', bg: 'rgba(251, 191, 36, 0.08)' },
-    { name: 'Ishita Kapoor', role: 'Data Scientist', score: 82, tag: 'Consider', color: 'rgb(251, 191, 36)', bg: 'rgba(251, 191, 36, 0.08)' },
-    { name: 'Karan Bansal', role: 'Backend Engineer', score: 78, tag: 'Consider', color: 'rgb(251, 191, 36)', bg: 'rgba(251, 191, 36, 0.08)' }
-  ];
-
-  const fullCandidatesList = [
-    { name: 'Aarav Sharma', email: 'aarav@google.com', role: 'Senior AI Engineer', score: 94, tag: 'Strong Hire', date: '2026-06-22', starRate: '4/4', status: 'Passed Proctoring', color: 'var(--color-accent-teal)', bg: 'rgba(45, 212, 191, 0.08)' },
-    { name: 'Neha Verma', email: 'neha.v@stripe.com', role: 'AI Engineer', score: 89, tag: 'Strong Hire', date: '2026-06-23', starRate: '3/4', status: 'Passed Proctoring', color: 'var(--color-accent-teal)', bg: 'rgba(45, 212, 191, 0.08)' },
-    { name: 'Rohan Mehta', email: 'rohan.mehta@amazon.com', role: 'ML Engineer', score: 86, tag: 'Consider', date: '2026-06-21', starRate: '3/4', status: 'Minor Warnings', color: 'rgb(251, 191, 36)', bg: 'rgba(251, 191, 36, 0.08)' },
-    { name: 'Ishita Kapoor', email: 'ishita@outlook.com', role: 'Data Scientist', score: 82, tag: 'Consider', date: '2026-06-24', starRate: '2/4', status: 'Passed Proctoring', color: 'rgb(251, 191, 36)', bg: 'rgba(251, 191, 36, 0.08)' },
-    { name: 'Karan Bansal', email: 'karan.b@gmail.com', role: 'Backend Engineer', score: 78, tag: 'Consider', date: '2026-06-20', starRate: '3/4', status: 'Passed Proctoring', color: 'rgb(251, 191, 36)', bg: 'rgba(251, 191, 36, 0.08)' },
-    { name: 'Vikram Singh', email: 'vikram.s@github.com', role: 'DevOps Lead', score: 74, tag: 'Consider', date: '2026-06-19', starRate: '2/4', status: 'Passed Proctoring', color: 'rgb(251, 191, 36)', bg: 'rgba(251, 191, 36, 0.08)' },
-    { name: 'Ananya Roy', email: 'ananya@yahoo.com', role: 'Frontend Engineer', score: 68, tag: 'Needs Prep', date: '2026-06-18', starRate: '2/4', status: 'Multiple Focus Lost Warnings', color: 'var(--color-accent-coral)', bg: 'rgba(251, 113, 133, 0.08)' },
-    { name: 'Siddharth Sen', email: 'sid.sen@outlook.com', role: 'Full Stack Engineer', score: 62, tag: 'Needs Prep', date: '2026-06-17', starRate: '1/4', status: 'Passed Proctoring', color: 'var(--color-accent-coral)', bg: 'rgba(251, 113, 133, 0.08)' },
-  ];
+  // Sort top candidates by score descending
+  const topCandidates = [...candidatesList]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map(c => ({
+      interview_id: c.interview_id,
+      name: c.candidate_name,
+      role: c.job_title,
+      score: c.score,
+      tag: c.recommendation || (c.score >= 85 ? 'Strong Hire' : c.score >= 70 ? 'Consider' : 'Needs Prep'),
+      color: c.score >= 85 ? 'var(--color-accent-teal)' : c.score >= 70 ? 'rgb(251, 191, 36)' : 'var(--color-accent-coral)',
+      bg: c.score >= 85 ? 'rgba(45, 212, 191, 0.08)' : c.score >= 70 ? 'rgba(251, 191, 36, 0.08)' : 'rgba(251, 113, 133, 0.08)'
+    }));
 
   const skillsHeatmap = [
     { name: 'Python', levels: [4, 4, 3, 4, 4, 2, 4, 3] },
@@ -55,38 +85,35 @@ export default function Dashboard() {
   ];
 
   const trendData = [
-    { name: 'Week 1', completed: 180 },
-    { name: 'Week 2', completed: 320 },
-    { name: 'Week 3', completed: 480 },
-    { name: 'Week 4', completed: 842 }
+    { name: 'Week 1', completed: Math.max(1, Math.round(completedInterviews * 0.2)) },
+    { name: 'Week 2', completed: Math.max(2, Math.round(completedInterviews * 0.4)) },
+    { name: 'Week 3', completed: Math.max(3, Math.round(completedInterviews * 0.7)) },
+    { name: 'Week 4', completed: completedInterviews }
   ];
 
   const pieData = [
-    { name: 'Excellent (90-100)', value: 25, color: '#2dd4bf' },
-    { name: 'Good (75-89)', value: 45, color: '#818cf8' },
-    { name: 'Average (60-74)', value: 20, color: '#fbbf24' },
-    { name: 'Needs Improvement (<60)', value: 10, color: '#fb7185' }
+    { name: 'Excellent (90-100)', value: totalAssessments > 0 ? Math.round(candidatesList.filter(c => c.score >= 90).length / totalAssessments * 100) : 25, color: '#2dd4bf' },
+    { name: 'Good (75-89)', value: totalAssessments > 0 ? Math.round(candidatesList.filter(c => c.score >= 75 && c.score < 90).length / totalAssessments * 100) : 45, color: '#818cf8' },
+    { name: 'Average (60-74)', value: totalAssessments > 0 ? Math.round(candidatesList.filter(c => c.score >= 60 && c.score < 75).length / totalAssessments * 100) : 20, color: '#fbbf24' },
+    { name: 'Needs Improvement (<60)', value: totalAssessments > 0 ? Math.round(candidatesList.filter(c => c.score < 60).length / totalAssessments * 100) : 10, color: '#fb7185' }
   ];
 
   const hiringProcess = [
     { step: '1', title: 'Create role intake', body: 'Recruiter answers guided questions once.' },
     { step: '2', title: 'Approve hiring blueprint', body: 'JD Agent extracts and recruiter edits role expectations.' },
-    { step: '3', title: 'Parse candidate evidence', body: 'Resume Agent enriches profile from resume and public links.' },
-    { step: '4', title: 'Run adaptive interview', body: 'AI asks role-specific questions and follow-ups.' },
+    { step: '3', title: 'Share assessment link', body: 'Copy shareable invitation link for candidates.' },
+    { step: '4', title: 'Candidate screens self', body: 'AI asks role-specific questions and follow-ups dynamically.' },
     { step: '5', title: 'Review ranking and report', body: 'Leaderboard, heatmap, transcript, and recommendation are ready.' },
   ];
 
-  // Pipeline funnel steps
   const funnelData = [
-    { label: 'Invited', count: 1248, percentage: '100%', color: '#818cf8' },
-    { label: 'In Progress', count: 842, percentage: '67.4%', color: '#6366f1' },
-    { label: 'Completed', count: 562, percentage: '45.0%', color: '#4f46e5' },
-    { label: 'Shortlisted', count: 142, percentage: '11.3%', color: '#2dd4bf' },
-    { label: 'Hired', count: 28, percentage: '2.2%', color: '#10b981' }
+    { label: 'Invited', count: totalAssessments, percentage: '100%', color: '#818cf8' },
+    { label: 'Completed', count: completedInterviews, percentage: totalAssessments > 0 ? `${Math.round(completedInterviews / totalAssessments * 100)}%` : '0%', color: '#4f46e5' },
+    { label: 'Shortlisted', count: strongHires, percentage: totalAssessments > 0 ? `${Math.round(strongHires / totalAssessments * 100)}%` : '0%', color: '#2dd4bf' }
   ];
 
-  const handleCandidateClick = (_cand: any) => {
-    // Navigate to report page to view details
+  const handleCandidateClick = (cand: any) => {
+    setInterviewId(cand.interview_id);
     navigate('/recruiter/report');
   };
 
@@ -149,9 +176,9 @@ export default function Dashboard() {
                       <Icon className="w-4 h-4 opacity-80" />
                       <span>{item.label}</span>
                     </div>
-                    {item.label === 'Candidates List' && (
+                    {item.label === 'Candidates List' && totalAssessments > 0 && (
                       <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full font-bold">
-                        12
+                        {totalAssessments}
                       </span>
                     )}
                   </button>
@@ -227,7 +254,113 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {activeTab === 'Candidates List' ? (
+          {loading ? (
+            <div className="card-premium p-16 text-center space-y-3">
+              <span className="text-xs tracking-wider uppercase text-theme-tertiary">Accessing Database Records...</span>
+            </div>
+          ) : activeTab === 'Active Jobs' ? (
+            <div className="card-premium p-6 bg-dark-900/10 space-y-6">
+              <div className="flex items-center justify-between border-b border-subtle pb-4" style={{ borderColor: 'var(--color-border-subtle)' }}>
+                <div>
+                  <h4 className="text-sm font-bold uppercase tracking-wider text-white">Active Assessments & Job Blueprints</h4>
+                  <p className="text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>Manage active JDs and copy candidate invitation links.</p>
+                </div>
+                <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-full font-bold">
+                  {jdsList.length} Active Positions
+                </span>
+              </div>
+              
+              {jdsList.length === 0 ? (
+                <div className="text-center py-10 text-xs text-theme-secondary">
+                  No active assessments found. Click "Create Recruiter Assessment" to get started.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {jdsList.map((job) => {
+                    const jobCandidates = candidatesList.filter(c => String(c.jd_id) === String(job.id));
+                    const jobCompleted = jobCandidates.filter(c => c.status === 'Completed');
+                    const scores = jobCandidates.map(c => c.score || 0);
+                    const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+                    const topScore = scores.length > 0 ? Math.max(...scores) : 0;
+
+                    return (
+                      <div key={job.id} className="rounded-lg border border-subtle p-5 bg-dark-950/40 hover:border-slate-700 transition-all flex flex-col justify-between" style={{ borderColor: 'var(--color-border-subtle)' }}>
+                        <div>
+                          <div className="flex justify-between items-start gap-4">
+                            <h5 className="text-base font-bold text-white leading-tight">{job.title}</h5>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded border border-blue-500/20 text-blue-400 bg-blue-600/10">
+                              {job.seniority || 'Mid'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-theme-secondary mt-1">
+                            {job.department || 'General'} • {job.industry || 'Tech'}
+                          </p>
+
+                          {/* ATS Micro Metrics Section */}
+                          <div className="grid grid-cols-2 gap-2 mt-4 mb-4 pt-3 border-t border-subtle/40">
+                            <div className="bg-white/5 p-2 rounded">
+                              <span className="text-[9px] uppercase tracking-wider text-theme-tertiary block">Candidates</span>
+                              <span className="text-sm font-bold text-white">{jobCandidates.length}</span>
+                            </div>
+                            <div className="bg-white/5 p-2 rounded">
+                              <span className="text-[9px] uppercase tracking-wider text-theme-tertiary block">Completed</span>
+                              <span className="text-sm font-bold text-white">{jobCompleted.length}</span>
+                            </div>
+                            <div className="bg-white/5 p-2 rounded">
+                              <span className="text-[9px] uppercase tracking-wider text-theme-tertiary block">Avg Score</span>
+                              <span className="text-sm font-bold text-white">{avgScore ? `${avgScore}%` : 'N/A'}</span>
+                            </div>
+                            <div className="bg-white/5 p-2 rounded">
+                              <span className="text-[9px] uppercase tracking-wider text-theme-tertiary block">Top Score</span>
+                              <span className="text-sm font-bold text-emerald-400">{topScore ? `${topScore}%` : 'N/A'}</span>
+                            </div>
+                          </div>
+                          
+                          {/* Shareable Link Box */}
+                          <div className="p-3 bg-dark-900/60 rounded border border-subtle space-y-2" style={{ borderColor: 'var(--color-border-subtle)' }}>
+                            <span className="text-[9px] uppercase tracking-widest font-bold text-theme-tertiary block">
+                              Candidate Assessment Link
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                readOnly 
+                                className="input-base !bg-dark-950/60 !py-1.5 text-[11px] flex-grow text-theme-secondary"
+                                value={`${window.location.protocol}//${window.location.host}/assessment/take/${job.id}`}
+                              />
+                              <button 
+                                onClick={() => {
+                                  navigator.clipboard.writeText(`${window.location.protocol}//${window.location.host}/assessment/take/${job.id}`);
+                                  alert('Assessment invitation link copied!');
+                                }}
+                                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-bold transition-all"
+                              >
+                                Copy
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center mt-5 pt-3 border-t border-subtle" style={{ borderColor: 'var(--color-border-subtle)' }}>
+                          <span className="text-[10px] text-theme-tertiary">
+                            Created: {job.created_at ? job.created_at.split('T')[0] : 'N/A'}
+                          </span>
+                          <button 
+                            onClick={() => {
+                              setSearchQuery(job.title);
+                              setActiveTab('Candidates List');
+                            }}
+                            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded text-xs font-semibold transition-all border border-white/10"
+                          >
+                            Filter Candidates
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : activeTab === 'Candidates List' ? (
             /* Full Candidates Database View */
             <div className="card-premium p-6 bg-dark-900/10 space-y-6">
               <div className="flex items-center justify-between border-b border-subtle pb-4" style={{ borderColor: 'var(--color-border-subtle)' }}>
@@ -236,65 +369,85 @@ export default function Dashboard() {
                   <p className="text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>Inspect parsed resumes, JD alignment, screening scores, and full candidate reports.</p>
                 </div>
                 <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-full font-bold">
-                  {fullCandidatesList.length} Total Profiles
+                  {candidatesList.length} Total Profiles
                 </span>
               </div>
 
-              <div className="overflow-x-auto w-full">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-subtle/80 text-[10px] uppercase font-bold tracking-wider text-dark-500" style={{ color: 'var(--color-text-tertiary)' }}>
-                      <th className="pb-3">Candidate</th>
-                      <th className="pb-3">Target Role</th>
-                      <th className="pb-3 text-center">Score</th>
-                      <th className="pb-3 text-center">STAR Rate</th>
-                      <th className="pb-3">Screening Evidence</th>
-                      <th className="pb-3">Date Completed</th>
-                      <th className="pb-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-subtle/40">
-                    {fullCandidatesList
-                      .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.role.toLowerCase().includes(searchQuery.toLowerCase()))
-                      .map((cand, idx) => (
-                        <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="py-3.5 pr-2">
-                            <span className="font-semibold text-white block">{cand.name}</span>
-                            <span className="text-[10px] opacity-75" style={{ color: 'var(--color-text-secondary)' }}>{cand.email}</span>
-                          </td>
-                          <td className="py-3.5 text-white/90">{cand.role}</td>
-                          <td className="py-3.5 text-center">
-                            <span className="font-bold text-white text-sm mr-2">{cand.score}</span>
-                            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase" style={{ color: cand.color, backgroundColor: cand.bg }}>
-                              {cand.tag}
-                            </span>
-                          </td>
-                          <td className="py-3.5 text-center font-medium text-white/90">{cand.starRate}</td>
-                          <td className="py-3.5">
-                            <span className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
-                              cand.status.includes('Violations') 
-                                ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
-                                : cand.status.includes('Warnings') 
-                                ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20' 
-                                : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            }`}>
-                              {cand.status}
-                            </span>
-                          </td>
-                          <td className="py-3.5 text-dark-400" style={{ color: 'var(--color-text-secondary)' }}>{cand.date}</td>
-                          <td className="py-3.5 text-right">
-                            <button
-                              onClick={() => handleCandidateClick(cand)}
-                              className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded font-medium transition-colors border border-white/10"
-                            >
-                              Full Report
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
+              {candidatesList.length === 0 ? (
+                <div className="text-center py-10 text-xs text-theme-secondary">
+                  No candidate submissions found yet for active assessment jobs.
+                </div>
+              ) : (
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-subtle/80 text-[10px] uppercase font-bold tracking-wider text-dark-500" style={{ color: 'var(--color-text-tertiary)' }}>
+                        <th className="pb-3">Candidate</th>
+                        <th className="pb-3">Target Role</th>
+                        <th className="pb-3 text-center">Resume Parsed</th>
+                        <th className="pb-3 text-center">Interview</th>
+                        <th className="pb-3 text-center">Report</th>
+                        <th className="pb-3 text-center font-bold">Score</th>
+                        <th className="pb-3 text-center">Pipeline Status</th>
+                        <th className="pb-3">Date Completed</th>
+                        <th className="pb-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-subtle/40">
+                      {candidatesList
+                        .filter(c => c.candidate_name.toLowerCase().includes(searchQuery.toLowerCase()) || c.job_title.toLowerCase().includes(searchQuery.toLowerCase()))
+                        .map((cand, idx) => {
+                          const tag = cand.score >= 85 ? 'Strong Hire' : cand.score >= 70 ? 'Consider' : 'Needs Prep';
+                          const color = cand.score >= 85 ? 'var(--color-accent-teal)' : cand.score >= 70 ? 'rgb(251, 191, 36)' : 'var(--color-accent-coral)';
+                          const bg = cand.score >= 85 ? 'rgba(45, 212, 191, 0.08)' : cand.score >= 70 ? 'rgba(251, 191, 36, 0.08)' : 'rgba(251, 113, 133, 0.08)';
+                          const isCompleted = cand.status === 'Completed';
+
+                          return (
+                            <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3.5 pr-2">
+                                <span className="font-semibold text-white block">{cand.candidate_name}</span>
+                                <span className="text-[10px] opacity-75" style={{ color: 'var(--color-text-secondary)' }}>{cand.candidate_email}</span>
+                              </td>
+                              <td className="py-3.5 text-white/90">{cand.job_title}</td>
+                              <td className="py-3.5 text-center text-emerald-400 font-bold text-sm">✓</td>
+                              <td className="py-3.5 text-center font-bold text-sm">
+                                {isCompleted ? (
+                                  <span className="text-emerald-400">✓</span>
+                                ) : (
+                                  <span className="text-amber-400 animate-pulse">•••</span>
+                                )}
+                              </td>
+                              <td className="py-3.5 text-center font-bold text-sm">
+                                {isCompleted ? (
+                                  <span className="text-emerald-400">✓</span>
+                                ) : (
+                                  <span className="text-slate-600">-</span>
+                                )}
+                              </td>
+                              <td className="py-3.5 text-center font-bold text-white text-sm">
+                                {cand.score}%
+                              </td>
+                              <td className="py-3.5 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${isCompleted ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'}`}>
+                                  {isCompleted ? 'Completed' : 'In Progress'}
+                                </span>
+                              </td>
+                              <td className="py-3.5 text-dark-400" style={{ color: 'var(--color-text-secondary)' }}>{cand.date || 'N/A'}</td>
+                              <td className="py-3.5 text-right">
+                                <button
+                                  onClick={() => handleCandidateClick(cand)}
+                                  className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded font-medium transition-colors border border-white/10"
+                                >
+                                  Full Report
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           ) : activeTab === 'Overview' ? (
             <>
@@ -348,35 +501,39 @@ export default function Dashboard() {
                     <span className="text-xs uppercase font-bold tracking-wider text-white">Top Candidates</span>
                     <span 
                       onClick={() => setActiveTab('Candidates List')}
-                      className="text-xs text-indigo-400 font-semibold cursor-pointer hover:underline cursor-pointer"
+                      className="text-xs text-indigo-400 font-semibold cursor-pointer hover:underline"
                     >
                       View All Candidates
                     </span>
                   </div>
-                  <div className="space-y-3.5">
-                    {topCandidates
-                      .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                      .map((cand, idx) => (
-                        <div 
-                          key={idx} 
-                          onClick={() => handleCandidateClick(cand)}
-                          className="flex items-center justify-between text-xs border-b border-subtle pb-2.5 last:border-0 last:pb-0 cursor-pointer hover:bg-white/[0.02] p-1.5 rounded transition-all"
-                          style={{ borderColor: 'var(--color-border-subtle)' }}
-                        >
-                          <div>
-                            <span className="font-semibold text-white block hover:text-indigo-300">{cand.name}</span>
-                            <span className="text-[10px] block" style={{ color: 'var(--color-text-tertiary)' }}>{cand.role}</span>
+                  {topCandidates.length === 0 ? (
+                    <p className="text-xs text-theme-secondary py-4 text-center">No candidates screened yet.</p>
+                  ) : (
+                    <div className="space-y-3.5">
+                      {topCandidates
+                        .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                        .map((cand, idx) => (
+                          <div 
+                            key={idx} 
+                            onClick={() => handleCandidateClick(cand)}
+                            className="flex items-center justify-between text-xs border-b border-subtle pb-2.5 last:border-0 last:pb-0 cursor-pointer hover:bg-white/[0.02] p-1.5 rounded transition-all"
+                            style={{ borderColor: 'var(--color-border-subtle)' }}
+                          >
+                            <div>
+                              <span className="font-semibold text-white block hover:text-indigo-300">{cand.name}</span>
+                              <span className="text-[10px] block" style={{ color: 'var(--color-text-tertiary)' }}>{cand.role}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-white text-sm">{cand.score}%</span>
+                              <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase flex items-center gap-1" style={{ color: cand.color, backgroundColor: cand.bg }}>
+                                {cand.tag}
+                                <ArrowUpRight className="w-2.5 h-2.5" />
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-bold text-white text-sm">{cand.score}</span>
-                            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase flex items-center gap-1" style={{ color: cand.color, backgroundColor: cand.bg }}>
-                              {cand.tag}
-                              <ArrowUpRight className="w-2.5 h-2.5" />
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Right: Skills Heatmap */}

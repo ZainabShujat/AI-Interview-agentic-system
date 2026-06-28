@@ -7,6 +7,8 @@ import logging
 from typing import Optional, Dict, List, Any
 import google.generativeai as genai
 from dotenv import load_dotenv
+from database import SessionLocal
+import models
 
 logger = logging.getLogger(__name__)
 load_dotenv()
