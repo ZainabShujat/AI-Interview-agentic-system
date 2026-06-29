@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -87,7 +87,7 @@ const fallbackBlueprint: Blueprint = {
 
 export default function Upload() {
   const navigate = useNavigate();
-  const { setResumeId, setJdId, setInterviewId } = useSession();
+  const { setJdId } = useSession();
 
   const [stage, setStage] = useState(-1);
   const [intake, setIntake] = useState<Intake>(emptyIntake);
