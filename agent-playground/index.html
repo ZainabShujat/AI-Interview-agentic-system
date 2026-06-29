@@ -467,11 +467,11 @@ Requirements:
             <div class="flex flex-col gap-3">
               <div class="flex flex-col gap-1">
                 <label class="text-[10px] uppercase font-bold text-slate-500">Resume Database ID</label>
-                <input id="int-resume-id" type="text" placeholder="Copy from Resume Intelligence output" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-indigo-300 focus:outline-none focus:border-indigo-500" />
+                <input id="int-resume-id" type="text" placeholder="Copy from Resume Intelligence output" value="${lastResumeDbId}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-indigo-300 focus:outline-none focus:border-indigo-500" />
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-[10px] uppercase font-bold text-slate-500">Job Description ID</label>
-                <input id="int-jd-id" type="text" placeholder="Copy from JD Intelligence output" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-indigo-300 focus:outline-none focus:border-indigo-500" />
+                <input id="int-jd-id" type="text" placeholder="Copy from JD Intelligence output" value="${lastJdDbId}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-indigo-300 focus:outline-none focus:border-indigo-500" />
               </div>
             </div>
             <div class="border-t border-slate-800/40 pt-3 mt-3">
@@ -738,6 +738,13 @@ Requirements:
 
         html = `
           <div class="space-y-5 text-xs">
+            <!-- Database ID Badge -->
+            ${data.id ? `
+              <div class="bg-indigo-950/20 border border-indigo-500/20 rounded-lg p-2 flex items-center justify-between font-mono text-[9px] text-indigo-300 mb-3">
+                <span>Resume Database ID: ${data.id}</span>
+                <button onclick="navigator.clipboard.writeText('${data.id}'); alert('Copied Resume Database ID!');" class="hover:text-white font-bold uppercase transition-colors">[Copy]</button>
+              </div>
+            ` : ''}
             <!-- Candidate Title Block -->
             <div class="border-b border-slate-800 pb-3.5">
               <div class="flex justify-between items-start">
@@ -925,6 +932,13 @@ Requirements:
 
         html = `
           <div class="space-y-4 text-xs">
+            <!-- Database ID Badge -->
+            ${data.id ? `
+              <div class="bg-indigo-950/20 border border-indigo-500/20 rounded-lg p-2 flex items-center justify-between font-mono text-[9px] text-indigo-300 mb-3">
+                <span>Job Description ID: ${data.id}</span>
+                <button onclick="navigator.clipboard.writeText('${data.id}'); alert('Copied Job Description ID!');" class="hover:text-white font-bold uppercase transition-colors">[Copy]</button>
+              </div>
+            ` : ''}
             <div class="border-b border-slate-800 pb-3">
               <h3 class="text-base font-bold text-white">${title}</h3>
               <p class="text-slate-400 mt-1">Experience Required: ${exp} • Domain: ${domain}</p>
@@ -944,9 +958,9 @@ Requirements:
           </div>
         `;
       } else if (tabId === 'match') {
-        const fit = data.fit_percentage || data.score || 0;
-        const summary = data.alignment_summary || data.summary || "No summary analysis available.";
-        const gaps = data.skills_gap || [];
+        const fit = data.matchScore || 0;
+        const strengths = data.strengths || [];
+        const missing = data.missing_skills || [];
         
         html = `
           <div class="space-y-4 text-xs">
@@ -960,13 +974,15 @@ Requirements:
               </div>
             </div>
             <div>
-              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1">Alignment Summary</span>
-              <p class="text-slate-300 leading-relaxed">${summary}</p>
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1.5">Alignment Strengths</span>
+              <ul class="list-disc pl-4 text-slate-300 space-y-1">
+                ${strengths.map(s => `<li>${s}</li>`).join('') || '<li>No specific strengths recorded.</li>'}
+              </ul>
             </div>
             <div>
-              <span class="text-[10px] uppercase font-bold text-rose-400 block mb-1.5">Identified Skills Gaps</span>
+              <span class="text-[10px] uppercase font-bold text-rose-400 block mb-1.5">Identified Gaps (Missing Skills)</span>
               <div class="flex flex-wrap gap-1.5">
-                ${gaps.map(g => `<span class="bg-rose-500/10 text-rose-300 px-2.5 py-0.5 rounded border border-rose-500/20 text-[10px]">${g}</span>`).join('') || '<span class="text-emerald-400 font-semibold">Perfect skills alignment! No gaps detected.</span>'}
+                ${missing.map(g => `<span class="bg-rose-500/10 text-rose-300 px-2.5 py-0.5 rounded border border-rose-500/20 text-[10px]">${g}</span>`).join('') || '<span class="text-emerald-400 font-semibold">Perfect skills alignment! No gaps detected.</span>'}
               </div>
             </div>
           </div>
@@ -1303,6 +1319,14 @@ Requirements:
       const codeBadge = document.getElementById('response-code');
       if (code >= 200 && code < 300) {
         codeBadge.className = "text-[10px] px-2 py-0.5 rounded border border-emerald-500/20 text-emerald-400 bg-emerald-500/10 font-bold";
+        
+        // Auto-save IDs returned by endpoints
+        if (activeTabId === 'resume' && data.id) {
+          lastResumeDbId = data.id;
+        } else if (activeTabId === 'jd' && data.id) {
+          lastJdDbId = data.id;
+        }
+        
         // Update visual preview box too
         renderVisualPreview(activeTabId, data);
       } else {
@@ -1517,6 +1541,8 @@ Requirements:
     }
 
     // State variables for Interview simulator
+    let lastResumeDbId = "";
+    let lastJdDbId = "";
     let currentQuestionText = "";
     let currentCategory = "";
     let currentQuestionIndex = 0;
