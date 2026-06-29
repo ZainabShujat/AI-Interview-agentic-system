@@ -117,11 +117,19 @@ class ResumeAnalysisSchema(BaseModel):
     potential_concerns: List[str] = Field(default_factory=list)
     links: List[LinkSchema] = Field(default_factory=list)
 
+class ResumeTelemetry(BaseModel):
+    cached: bool
+    model: str
+    cost: float
+    mode: str
+    fallback: bool
+
 class ResumeResponse(BaseModel):
     id: str
     filename: str
     parsed: Optional[ResumeAnalysisSchema] = None
     raw_resume_text: Optional[str] = None
+    telemetry: Optional[ResumeTelemetry] = None
 
 class RoadmapRequest(BaseModel):
     resume: Dict[str, Any]

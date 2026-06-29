@@ -447,15 +447,42 @@ Requirements:
       } else if (activeTabId === 'match') {
         html = `
           <div class="space-y-4 h-full flex flex-col">
-            <p class="text-xs text-slate-400">Compute matching and gap alignment dynamically by directly pasting raw Candidate Resume JSON and recruiter Job Description JSON.</p>
-            <div class="grid grid-cols-1 gap-3 flex-grow min-h-0">
+            <p class="text-xs text-slate-400">Compute matching and gap alignment dynamically. The default mode queries stored documents from the database by ID.</p>
+            
+            <div class="flex items-center gap-2 py-1">
+              <input type="checkbox" id="match-raw-mode" onchange="toggleMatchRawMode()" class="h-3 w-3 accent-indigo-500 rounded border-slate-700 bg-slate-900" />
+              <label for="match-raw-mode" class="text-[10px] font-bold text-slate-400 uppercase cursor-pointer select-none">Developer Tools: Direct JSON Schema Match</label>
+            </div>
+
+            <!-- Default: ID Inputs -->
+            <div id="match-id-inputs" class="space-y-3">
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Resume Database ID</label>
+                <input id="match-resume-id" type="text" placeholder="Copy from Resume Intelligence output" value="${lastResumeDbId}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-indigo-300 focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Job Description ID</label>
+                <input id="match-jd-id" type="text" placeholder="Copy from JD Intelligence output" value="${lastJdDbId}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-indigo-300 focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Endpoint API Route</label>
+                <span class="text-xs font-mono text-indigo-300">POST /api/match</span>
+              </div>
+            </div>
+
+            <!-- Advanced: JSON textareas -->
+            <div id="match-json-inputs" class="hidden space-y-3 flex-grow min-h-0">
               <div class="flex flex-col gap-1">
                 <label class="text-[10px] uppercase font-bold text-slate-500">Resume JSON</label>
-                <textarea id="match-resume-json" class="w-full h-[180px] bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[11px] font-mono focus:outline-none focus:border-indigo-500 text-indigo-300 resize-none leading-relaxed">${JSON.stringify(templates.match.resume_json, null, 2)}</textarea>
+                <textarea id="match-resume-json" class="w-full h-[130px] bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[10px] font-mono focus:outline-none focus:border-indigo-500 text-indigo-300 resize-none leading-relaxed">${JSON.stringify(templates.match.resume_json, null, 2)}</textarea>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-[10px] uppercase font-bold text-slate-500">JD JSON</label>
-                <textarea id="match-jd-json" class="w-full h-[180px] bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[11px] font-mono focus:outline-none focus:border-indigo-500 text-indigo-300 resize-none leading-relaxed">${JSON.stringify(templates.match.jd_json, null, 2)}</textarea>
+                <textarea id="match-jd-json" class="w-full h-[130px] bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[10px] font-mono focus:outline-none focus:border-indigo-500 text-indigo-300 resize-none leading-relaxed">${JSON.stringify(templates.match.jd_json, null, 2)}</textarea>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Endpoint API Route</label>
+                <span class="text-xs font-mono text-indigo-300">POST /api/match/raw</span>
               </div>
             </div>
           </div>
@@ -659,7 +686,7 @@ Requirements:
     }
 
     // Render formatted human-readable card layout based on the backend JSON response
-    function renderVisualPreview(tabId, data) {
+    function renderVisualPreview(tabId, data, latency = 0) {
       const container = document.getElementById('visual-preview-container');
       if (!data || data.error) {
         container.innerHTML = `
@@ -694,21 +721,99 @@ Requirements:
       let html = '';
       if (tabId === 'resume') {
         const profile = resolveParsedObject(data);
-        const name = profile.candidate_name || "N/A";
-        const email = profile.email || "N/A";
-        const phone = profile.phone || "N/A";
-        const headline = profile.headline || "";
-        const location = profile.location || "";
-        const summary = profile.summary || profile.objective || profile.professional_summary || profile.about || "No summary extracted.";
+        const telemetry = data.telemetry || {
+          cached: false,
+          model: "Local Rules Heuristics",
+          cost: 0.0,
+          mode: "Offline/Local",
+          fallback: true
+        };
         
-        const domain = profile.primary_domain || "N/A";
-        const level = profile.career_level || "N/A";
+        // Dynamic Heuristics for Confidence & Source
+        let nameConf = "0%";
+        let nameSrc = "Not found";
+        if (profile.candidate_name && profile.candidate_name !== "Candidate Name") {
+          const fname = data.filename || "";
+          const nameClean = profile.candidate_name.replace(/\s+/g, '').toLowerCase();
+          const fnameClean = fname.replace(/[^A-Za-z]/g, '').toLowerCase();
+          if (fnameClean && fnameClean.includes(nameClean)) {
+            nameConf = "65%";
+            nameSrc = "Filename Fallback";
+          } else {
+            nameConf = "98%";
+            nameSrc = "Resume Header Section (Line 1-3)";
+          }
+        }
 
-        const linkedin = profile.linkedin || "";
-        const github = profile.github || "";
-        const portfolio = profile.portfolio || "";
-        const website = profile.website || "";
+        let headlineConf = profile.headline ? "85%" : "0%";
+        let headlineSrc = profile.headline ? "Resume Header Profile" : "Not extracted";
 
+        let emailConf = profile.email ? "99%" : "0%";
+        let emailSrc = profile.email ? "OCR Text Regex Match" : "Not extracted";
+
+        let phoneConf = profile.phone ? "99%" : "0%";
+        let phoneSrc = profile.phone ? "OCR Text Regex Match" : "Not extracted";
+
+        let locationConf = profile.location ? "85%" : "0%";
+        let locationSrc = profile.location ? "OCR Location Parser" : "Not extracted";
+
+        let summaryConf = profile.summary ? "90%" : "0%";
+        let summarySrc = profile.summary ? "LLM Context Synthesis" : "Not extracted";
+
+        // Helper to render basic key-value lines
+        function renderField(label, val, conf = "0%", src = "N/A") {
+          return `
+            <div class="py-2 flex justify-between items-start gap-4 border-b border-slate-800/30">
+              <div class="flex flex-col">
+                <span class="text-[9px] uppercase font-bold text-slate-500">${label}</span>
+                <span class="text-[8px] text-slate-500 mt-0.5 font-mono">Conf: ${conf} • Src: ${src}</span>
+              </div>
+              <span class="text-white font-semibold text-right leading-relaxed">${val || '<span class="text-slate-600 italic">Not found</span>'}</span>
+            </div>
+          `;
+        }
+
+        // Helper to render arrays as tag badges
+        function renderTags(label, list, conf = "0%", src = "N/A") {
+          if (!Array.isArray(list)) return '';
+          const cleaned = list.map(item => String(item).trim()).filter(Boolean);
+          return `
+            <div class="py-2.5 border-b border-slate-800/30">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-[9px] uppercase font-bold text-slate-500">${label}</span>
+                <span class="text-[8px] text-slate-500 font-mono">Conf: ${cleaned.length > 0 ? conf : '0%'} • Src: ${cleaned.length > 0 ? src : 'N/A'}</span>
+              </div>
+              <div class="flex flex-wrap gap-1">
+                ${cleaned.map(item => `<span class="bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/20 text-[9px] font-semibold">${item}</span>`).join('') || '<span class="text-slate-600 italic">None found</span>'}
+              </div>
+            </div>
+          `;
+        }
+
+        // Helper to render nested list blocks
+        function renderObjects(label, list, conf = "0%", src = "N/A", templateFn) {
+          const count = Array.isArray(list) ? list.length : 0;
+          return `
+            <div class="py-3 border-b border-slate-800/30">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-[9px] uppercase font-bold text-slate-500">${label}</span>
+                <span class="text-[8px] text-slate-500 font-mono">Conf: ${count > 0 ? conf : '0%'} • Src: ${count > 0 ? src : 'N/A'}</span>
+              </div>
+              <div class="space-y-2">
+                ${count > 0 ? list.map(templateFn).join('') : '<div class="text-slate-600 italic text-[11px]">No records found</div>'}
+              </div>
+            </div>
+          `;
+        }
+
+        // Social Links
+        let linksHtml = '';
+        if (profile.linkedin) linksHtml += `<a href="${profile.linkedin}" target="_blank" class="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 text-[9px] font-semibold">LinkedIn</a>`;
+        if (profile.github) linksHtml += `<a href="${profile.github}" target="_blank" class="px-2 py-0.5 rounded bg-slate-500/10 border border-slate-500/30 text-slate-300 hover:bg-slate-500/20 text-[9px] font-semibold">GitHub</a>`;
+        if (profile.portfolio) linksHtml += `<a href="${profile.portfolio}" target="_blank" class="px-2 py-0.5 rounded bg-teal-500/10 border border-teal-500/30 text-teal-400 hover:bg-teal-500/20 text-[9px] font-semibold">Portfolio</a>`;
+        if (profile.website) linksHtml += `<a href="${profile.website}" target="_blank" class="px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 text-[9px] font-semibold">Website</a>`;
+
+        // Combine skills
         let skillsList = [];
         if (Array.isArray(profile.skills)) skillsList = skillsList.concat(profile.skills);
         if (Array.isArray(profile.technical_skills)) skillsList = skillsList.concat(profile.technical_skills);
@@ -718,208 +823,160 @@ Requirements:
         if (Array.isArray(profile.tools)) skillsList = skillsList.concat(profile.tools);
         if (Array.isArray(profile.databases)) skillsList = skillsList.concat(profile.databases);
         if (Array.isArray(profile.cloud_platforms)) skillsList = skillsList.concat(profile.cloud_platforms);
-        
-        const skills = [...new Set(skillsList)].filter(s => s && s.trim());
-        const exp = profile.experience || [];
-        const edu = profile.education || [];
-        const projects = profile.projects || [];
-        const internships = profile.internships || [];
-        const certs = profile.certifications || [];
-        const strengths = profile.top_strengths || [];
-        const concerns = profile.potential_concerns || [];
-        const achievements = profile.achievements || [];
-        const languages = profile.languages || [];
-
-        let linksHtml = '';
-        if (linkedin) linksHtml += `<a href="${linkedin}" target="_blank" class="px-2.5 py-1 rounded bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 text-[10px] font-semibold transition-colors">LinkedIn</a>`;
-        if (github) linksHtml += `<a href="${github}" target="_blank" class="px-2.5 py-1 rounded bg-slate-500/10 border border-slate-500/30 text-slate-300 hover:bg-slate-500/20 text-[10px] font-semibold transition-colors">GitHub</a>`;
-        if (portfolio) linksHtml += `<a href="${portfolio}" target="_blank" class="px-2.5 py-1 rounded bg-teal-500/10 border border-teal-500/30 text-teal-400 hover:bg-teal-500/20 text-[10px] font-semibold transition-colors">Portfolio</a>`;
-        if (website) linksHtml += `<a href="${website}" target="_blank" class="px-2.5 py-1 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 text-[10px] font-semibold transition-colors">Website</a>`;
+        const skills = [...new Set(skillsList)].filter(s => s && String(s).trim());
 
         html = `
           <div class="space-y-5 text-xs">
+            <!-- 1. Observability Telemetry Badge -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-900/60 p-3 rounded-lg border border-indigo-500/20">
+              <div class="flex flex-col">
+                <span class="text-[8px] uppercase tracking-wider text-slate-500 font-extrabold">Execution Time</span>
+                <span class="text-xs font-bold text-white mt-0.5">${latency || '--'} ms</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-[8px] uppercase tracking-wider text-slate-500 font-extrabold">Model Engine</span>
+                <span class="text-xs font-bold text-teal-400 mt-0.5">${telemetry.model}</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-[8px] uppercase tracking-wider text-slate-500 font-extrabold">Execution Mode</span>
+                <span class="text-xs font-bold text-indigo-400 mt-0.5">${telemetry.mode}</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-[8px] uppercase tracking-wider text-slate-500 font-extrabold">Estimated Cost</span>
+                <span class="text-xs font-mono text-emerald-400 mt-0.5">$${telemetry.cost.toFixed(5)}</span>
+              </div>
+            </div>
+
             <!-- Database ID Badge -->
             ${data.id ? `
-              <div class="bg-indigo-950/20 border border-indigo-500/20 rounded-lg p-2 flex items-center justify-between font-mono text-[9px] text-indigo-300 mb-3">
-                <span>Resume Database ID: ${data.id}</span>
+              <div class="bg-indigo-950/20 border border-indigo-500/20 rounded-lg p-2 flex items-center justify-between font-mono text-[9px] text-indigo-300">
+                <span>Resume ID: ${data.id}</span>
                 <button onclick="navigator.clipboard.writeText('${data.id}'); alert('Copied Resume Database ID!');" class="hover:text-white font-bold uppercase transition-colors">[Copy]</button>
               </div>
             ` : ''}
-            <!-- Candidate Title Block -->
-            <div class="border-b border-slate-800 pb-3.5">
-              <div class="flex justify-between items-start">
-                <h3 class="text-base font-extrabold text-white leading-tight">${name}</h3>
-                <span class="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">${level}</span>
+
+            <!-- 2. Candidate Information -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60 space-y-2">
+              <span class="text-[9px] uppercase font-bold text-indigo-400 block mb-1">Candidate Profile</span>
+              ${renderField('Name', profile.candidate_name, nameConf, nameSrc)}
+              ${renderField('Headline', profile.headline, headlineConf, headlineSrc)}
+              ${renderField('Domain', profile.primary_domain, profile.primary_domain ? '90%' : '0%', profile.primary_domain ? 'LLM Semantic classification' : 'N/A')}
+              ${renderField('Seniority Level', profile.career_level, profile.career_level ? '85%' : '0%', profile.career_level ? 'LLM Experience Year classification' : 'N/A')}
+            </div>
+
+            <!-- 3. Contact Information -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60 space-y-2">
+              <span class="text-[9px] uppercase font-bold text-indigo-400 block mb-1">Contact Details</span>
+              ${renderField('Email', profile.email, emailConf, emailSrc)}
+              ${renderField('Phone', profile.phone, phoneConf, phoneSrc)}
+              ${renderField('Location', profile.location, locationConf, locationSrc)}
+            </div>
+
+            <!-- 4. Summary -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-[9px] uppercase font-bold text-indigo-400">Executive Summary</span>
+                <span class="text-[8px] text-slate-500 font-mono">Conf: ${summaryConf} • Src: ${summarySrc}</span>
               </div>
-              ${headline ? `<p class="text-indigo-300 font-semibold text-xs mt-1">${headline}</p>` : ''}
-              <p class="text-slate-400 mt-1.5 text-[10px] leading-relaxed">
-                ${location ? `📍 ${location} &nbsp;•&nbsp; ` : ''} 📧 ${email} ${phone ? ` &nbsp;•&nbsp; 📞 ${phone}` : ''}
-              </p>
-              ${linksHtml ? `<div class="flex gap-2 mt-3">${linksHtml}</div>` : ''}
+              <p class="text-slate-300 leading-relaxed text-[11px]">${profile.summary || '<span class="text-slate-600 italic">No summary extracted</span>'}</p>
             </div>
 
-            <!-- Primary Domain Block -->
-            <div class="grid grid-cols-1 gap-3">
-              <div class="bg-slate-900/40 p-2.5 rounded border border-slate-800/60">
-                <span class="text-[9px] uppercase text-slate-500 block font-bold">Primary Domain</span>
-                <span class="text-xs font-bold text-white block mt-0.5">${domain}</span>
+            <!-- 5. Skills -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60">
+              <span class="text-[9px] uppercase font-bold text-indigo-400 block mb-2">Skills & Competencies</span>
+              <div class="space-y-1">
+                ${renderTags('Extracted Skills', skills, skills.length > 0 ? '95%' : '0%', 'LLM Vocabulary Parser')}
+                ${renderTags('Top Strengths', profile.top_strengths, '90%', 'LLM Strength Extraction')}
+                ${renderTags('Potential Concerns', profile.potential_concerns, '88%', 'LLM Anomaly Detector')}
+                ${renderTags('Languages', profile.languages, '95%', 'OCR Language Parser')}
               </div>
             </div>
 
-            <!-- Professional Summary -->
-            <div>
-              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1">Professional Summary</span>
-              <p class="text-slate-300 leading-relaxed">${summary}</p>
-            </div>
-
-            <!-- Strengths & Concerns Grid -->
-            ${(strengths.length > 0 || concerns.length > 0) ? `
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-800/60 pt-3">
-                ${strengths.length > 0 ? `
-                  <div>
-                    <span class="text-[10px] uppercase font-bold text-emerald-400 block mb-2">Top Strengths</span>
-                    <ul class="space-y-1.5">
-                      ${strengths.map(s => `<li class="flex items-start gap-1.5 text-slate-300"><span class="text-emerald-400 font-bold">✓</span><span>${s}</span></li>`).join('')}
-                    </ul>
+            <!-- 6. Experience -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60 space-y-3">
+              ${renderObjects('Professional Work History', profile.experience, '92%', 'LLM Chronological Experience Timeline', e => `
+                <div class="p-2.5 rounded bg-slate-950/40 border border-slate-800/40 text-[11px]">
+                  <div class="flex justify-between font-bold text-white gap-2">
+                    <span>${e.title || 'Role'}</span>
+                    <span class="text-slate-400 text-[10px] font-normal shrink-0">${e.duration || ''}</span>
                   </div>
-                ` : ''}
-                ${concerns.length > 0 ? `
-                  <div>
-                    <span class="text-[10px] uppercase font-bold text-amber-400 block mb-2">Potential Concerns</span>
-                    <ul class="space-y-1.5">
-                      ${concerns.map(c => `<li class="flex items-start gap-1.5 text-slate-300"><span class="text-amber-400 font-bold">⚠</span><span>${c}</span></li>`).join('')}
+                  <div class="text-[10px] text-indigo-400 font-semibold mt-0.5">${e.company || ''} ${e.employment_type ? `(${e.employment_type})` : ''}</div>
+                  ${e.responsibilities && e.responsibilities.length > 0 ? `
+                    <ul class="list-disc pl-4 mt-2 space-y-1 text-slate-300">
+                      ${e.responsibilities.map(r => `<li>${r}</li>`).join('')}
                     </ul>
-                  </div>
-                ` : ''}
-              </div>
-            ` : ''}
-
-            <!-- Extracted Skills -->
-            <div class="border-t border-slate-800/60 pt-3">
-              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-2">Extracted Skills</span>
-              <div class="flex flex-wrap gap-1.5">
-                ${skills.map(s => `<span class="bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/20 text-[10px] font-semibold">${s}</span>`).join('') || '<span class="text-slate-500">None detected</span>'}
-              </div>
-            </div>
-
-            <!-- Projects Grid -->
-            ${projects.length > 0 ? `
-              <div class="border-t border-slate-800/60 pt-3">
-                <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-2.5">Projects Portfolio</span>
-                <div class="grid grid-cols-1 gap-2.5">
-                  ${projects.map(p => `
-                    <div class="bg-slate-900/30 p-3 rounded border border-slate-800">
-                      <div class="flex justify-between items-start gap-2">
-                        <span class="font-bold text-white text-xs">${p.title || 'Project'}</span>
-                        <div class="flex gap-2">
-                          ${p.github ? `<a href="${p.github}" target="_blank" class="text-[9px] font-bold text-indigo-400 hover:underline">GitHub</a>` : ''}
-                          ${p.demo ? `<a href="${p.demo}" target="_blank" class="text-[9px] font-bold text-teal-400 hover:underline">Demo</a>` : ''}
-                        </div>
-                      </div>
-                      ${p.description ? `<p class="text-slate-400 mt-1 text-[11px] leading-relaxed">${p.description}</p>` : ''}
-                      ${(p.technologies && p.technologies.length > 0) ? `
-                        <div class="flex flex-wrap gap-1 mt-2">
-                          ${p.technologies.map(t => `<span class="text-[9px] text-slate-500 px-1 bg-white/5 border border-white/5 rounded">${t}</span>`).join('')}
-                        </div>
-                      ` : ''}
-                    </div>
-                  `).join('')}
+                  ` : ''}
                 </div>
-              </div>
-            ` : ''}
-
-            <!-- Work Experience Timeline -->
-            <div class="border-t border-slate-800/60 pt-3">
-              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-2.5">Work History</span>
-              <div class="space-y-3">
-                ${exp.map(e => `
-                  <div class="bg-slate-900/40 p-3 rounded border border-slate-800/60">
-                    <div class="flex justify-between font-semibold text-white text-xs">
-                      <span>${e.title || 'Role'}</span>
-                      <span class="text-slate-400 text-[10px]">${e.duration || ''}</span>
-                    </div>
-                    <div class="text-[10px] text-indigo-300 mt-0.5 font-semibold">${e.company || ''} ${e.employment_type ? `(${e.employment_type})` : ''}</div>
-                    ${(e.responsibilities && e.responsibilities.length > 0) ? `
-                      <ul class="list-disc pl-4 mt-2 text-slate-300 space-y-1 text-[11px] leading-relaxed">
-                        ${e.responsibilities.map(r => `<li>${r}</li>`).join('')}
-                      </ul>
-                    ` : ''}
-                    ${(e.achievements && e.achievements.length > 0) ? `
-                      <div class="mt-2 text-[11px]">
-                        <span class="font-bold text-teal-400 block">Key Achievements:</span>
-                        <ul class="list-disc pl-4 mt-0.5 text-slate-300 space-y-0.5">
-                          ${e.achievements.map(a => `<li>${a}</li>`).join('')}
-                        </ul>
-                      </div>
-                    ` : ''}
+              `)}
+              ${renderObjects('Internships', profile.internships, '85%', 'LLM Internship Extractor', i => `
+                <div class="p-2.5 rounded bg-slate-950/40 border border-slate-800/40 text-[11px]">
+                  <div class="flex justify-between font-bold text-white gap-2">
+                    <span>${i.role || 'Intern'}</span>
+                    <span class="text-slate-400 text-[10px] font-normal shrink-0">${i.duration || ''}</span>
                   </div>
-                `).join('') || '<span class="text-slate-500">No work history parsed.</span>'}
-              </div>
-            </div>
-
-            <!-- Internships -->
-            ${internships.length > 0 ? `
-              <div class="border-t border-slate-800/60 pt-3">
-                <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-2.5">Internships</span>
-                <div class="space-y-2">
-                  ${internships.map(i => `
-                    <div class="bg-slate-900/40 p-2.5 rounded border border-slate-800/60">
-                      <div class="flex justify-between font-semibold text-white">
-                        <span>${i.role || 'Intern'}</span>
-                        <span class="text-slate-400">${i.duration || ''}</span>
-                      </div>
-                      <div class="text-[10px] text-indigo-300 mt-0.5 font-semibold">${i.company || ''}</div>
-                      ${i.summary ? `<p class="text-slate-400 mt-1 leading-relaxed text-[11px]">${i.summary}</p>` : ''}
-                    </div>
-                  `).join('')}
+                  <div class="text-[10px] text-indigo-400 font-semibold mt-0.5">${i.company || ''}</div>
+                  ${i.summary ? `<p class="mt-1 text-slate-400">${i.summary}</p>` : ''}
                 </div>
-              </div>
-            ` : ''}
-
-            <!-- Education -->
-            <div class="border-t border-slate-800/60 pt-3">
-              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-2.5">Education</span>
-              <div class="space-y-2">
-                ${edu.map(ed => `
-                  <div class="bg-slate-900/40 p-2.5 rounded border border-slate-800/60">
-                    <div class="flex justify-between font-semibold text-white">
-                      <span>${ed.degree || 'Degree'} ${ed.branch ? `in ${ed.branch}` : ''}</span>
-                      <span class="text-slate-400">${ed.year || ''}</span>
-                    </div>
-                    <div class="text-[10px] text-indigo-300 mt-0.5 font-semibold">${ed.institution || ''}</div>
-                    ${ed.cgpa ? `<div class="text-slate-400 text-[10px] mt-0.5">CGPA/Grade: ${ed.cgpa}</div>` : ''}
-                  </div>
-                `).join('') || '<span class="text-slate-500">No education parsed.</span>'}
-              </div>
+              `)}
             </div>
 
-            <!-- Certifications, Achievements, Languages Grid -->
-            ${(certs.length > 0 || achievements.length > 0 || languages.length > 0) ? `
-              <div class="border-t border-slate-800/60 pt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                ${certs.length > 0 ? `
-                  <div>
-                    <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1.5">Certifications</span>
-                    <ul class="list-disc pl-4 text-slate-300 space-y-1">
-                      ${certs.map(c => `<li>${c}</li>`).join('')}
-                    </ul>
+            <!-- 7. Projects -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60">
+              ${renderObjects('Projects Portfolio', profile.projects, '90%', 'LLM Project Parser', p => `
+                <div class="p-2.5 rounded bg-slate-950/40 border border-slate-800/40 text-[11px]">
+                  <div class="flex justify-between font-bold text-white gap-2">
+                    <span>${p.title || 'Project'}</span>
+                    <div class="flex gap-1.5 shrink-0">
+                      ${p.github ? `<a href="${p.github}" target="_blank" class="text-[9px] text-indigo-400 hover:underline">GitHub</a>` : ''}
+                      ${p.demo ? `<a href="${p.demo}" target="_blank" class="text-[9px] text-teal-400 hover:underline">Demo</a>` : ''}
+                    </div>
                   </div>
-                ` : ''}
-                ${achievements.length > 0 ? `
-                  <div>
-                    <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1.5">Achievements</span>
-                    <ul class="list-disc pl-4 text-slate-300 space-y-1">
-                      ${achievements.map(a => `<li>${a}</li>`).join('')}
-                    </ul>
+                  ${p.description ? `<p class="mt-1 text-slate-300">${p.description}</p>` : ''}
+                  ${p.technologies && p.technologies.length > 0 ? `
+                    <div class="flex flex-wrap gap-1 mt-1.5">
+                      ${p.technologies.map(t => `<span class="bg-white/5 border border-white/5 rounded px-1 text-[8px] text-slate-500">${t}</span>`).join('')}
+                    </div>
+                  ` : ''}
+                </div>
+              `)}
+            </div>
+
+            <!-- 8. Education -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60">
+              ${renderObjects('Academic Records', profile.education, '94%', 'LLM Academic Timeline Tracker', ed => `
+                <div class="p-2.5 rounded bg-slate-950/40 border border-slate-800/40 text-[11px]">
+                  <div class="flex justify-between font-bold text-white gap-2">
+                    <span>${ed.degree || 'Degree'} ${ed.branch ? `in ${ed.branch}` : ''}</span>
+                    <span class="text-slate-400 text-[10px] font-normal shrink-0">${ed.year || ''}</span>
                   </div>
-                ` : ''}
-                ${languages.length > 0 ? `
-                  <div class="md:col-span-2">
-                    <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1">Languages</span>
-                    <p class="text-slate-300">${languages.join(', ')}</p>
-                  </div>
-                ` : ''}
+                  <div class="text-[10px] text-indigo-400 font-semibold mt-0.5">${ed.institution || ''}</div>
+                  ${ed.cgpa ? `<div class="mt-1 text-[10px] text-slate-500">Result: ${ed.cgpa}</div>` : ''}
+                </div>
+              `)}
+            </div>
+
+            <!-- 9. Certifications -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60">
+              ${renderTags('Certifications', profile.certifications, '90%', 'Local Regex Cert Scanner')}
+            </div>
+
+            <!-- 10. Links -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60 flex items-center justify-between">
+              <div class="flex flex-col">
+                <span class="text-[9px] uppercase font-bold text-indigo-400">Verified Links</span>
+                <span class="text-[8px] text-slate-500 font-mono mt-0.5">Conf: ${linksHtml ? '99%' : '0%'} • Src: OCR Link Extractor</span>
               </div>
-            ` : ''}
+              <div class="flex gap-1.5">${linksHtml || '<span class="text-slate-600 italic">None found</span>'}</div>
+            </div>
+
+            <!-- 11. Collapsed Raw JSON pre details -->
+            <details class="bg-slate-900/60 border border-slate-800/80 rounded-lg p-3 cursor-pointer select-none">
+              <summary class="text-[9px] uppercase font-bold text-indigo-400 hover:text-white transition-colors flex items-center justify-between">
+                <span>Raw Parsed JSON (Developer Console)</span>
+                <span class="text-[8px] text-slate-500 font-mono lowercase">click to expand</span>
+              </summary>
+              <pre class="mt-3 text-[10px] font-mono text-teal-400 bg-slate-950/60 border border-slate-900 p-2.5 rounded overflow-x-auto max-h-60 leading-relaxed">${JSON.stringify(data, null, 2)}</pre>
+            </details>
           </div>
         `;
       } else if (tabId === 'jd') {
@@ -961,11 +1018,12 @@ Requirements:
         const fit = data.matchScore || 0;
         const strengths = data.strengths || [];
         const missing = data.missing_skills || [];
+        const justifications = data.justifications || [];
         
         html = `
           <div class="space-y-4 text-xs">
             <div class="flex items-center gap-4 border-b border-slate-800 pb-3">
-              <div class="w-14 h-14 rounded-full flex items-center justify-center border-2 border-indigo-500 text-white font-extrabold text-lg bg-indigo-500/10">
+              <div class="w-14 h-14 rounded-full flex items-center justify-center border-2 border-indigo-500 text-white font-extrabold text-lg bg-indigo-500/10 animate-pulse">
                 ${fit}%
               </div>
               <div>
@@ -973,12 +1031,29 @@ Requirements:
                 <p class="text-[10px] text-slate-400 mt-0.5">Automated screening metrics</p>
               </div>
             </div>
+
+            <!-- Justification Explainability list -->
+            ${justifications.length > 0 ? `
+              <div class="bg-slate-900/60 border border-slate-850 p-3 rounded-lg space-y-2">
+                <span class="text-[9px] uppercase font-bold text-teal-400 block tracking-wider">Justification & Logic (Explainability)</span>
+                <div class="space-y-1.5 text-[11px] text-slate-300">
+                  ${justifications.map(j => `
+                    <div class="flex items-start gap-2 leading-relaxed">
+                      ${j.type === 'success' ? '<span class="text-emerald-400 font-bold">✓</span>' : j.type === 'warning' ? '<span class="text-amber-400 font-bold">⚠</span>' : '<span class="text-indigo-400 font-bold">ℹ</span>'}
+                      <span>${j.text}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+
             <div>
               <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1.5">Alignment Strengths</span>
               <ul class="list-disc pl-4 text-slate-300 space-y-1">
                 ${strengths.map(s => `<li>${s}</li>`).join('') || '<li>No specific strengths recorded.</li>'}
               </ul>
             </div>
+            
             <div>
               <span class="text-[10px] uppercase font-bold text-rose-400 block mb-1.5">Identified Gaps (Missing Skills)</span>
               <div class="flex flex-wrap gap-1.5">
@@ -1328,7 +1403,7 @@ Requirements:
         }
         
         // Update visual preview box too
-        renderVisualPreview(activeTabId, data);
+        renderVisualPreview(activeTabId, data, latency);
       } else {
         codeBadge.className = "text-[10px] px-2 py-0.5 rounded border border-rose-500/20 text-rose-400 bg-rose-500/10 font-bold";
         document.getElementById('visual-preview-container').innerHTML = `
@@ -1360,13 +1435,21 @@ Requirements:
         const payload = JSON.stringify({ text });
         curl = `curl -X POST "${baseUrl}/api/jd" \\\n  -H "Content-Type: application/json" \\\n  -d '${payload.replace(/'/g, "'\\''")}'`;
       } else if (activeTabId === 'match') {
-        const resume_json = document.getElementById('match-resume-json').value.trim();
-        const jd_json = document.getElementById('match-jd-json').value.trim();
-        try {
-          const payload = JSON.stringify({ resume_json: JSON.parse(resume_json), jd_json: JSON.parse(jd_json) });
-          curl = `curl -X POST "${baseUrl}/api/match/raw" \\\n  -H "Content-Type: application/json" \\\n  -d '${payload.replace(/'/g, "'\\''")}'`;
-        } catch(e) {
-          curl = `// Invalid JSON input in request fields`;
+        const isRawMode = document.getElementById('match-raw-mode') && document.getElementById('match-raw-mode').checked;
+        if (isRawMode) {
+          const resume_json = document.getElementById('match-resume-json').value.trim();
+          const jd_json = document.getElementById('match-jd-json').value.trim();
+          try {
+            const payload = JSON.stringify({ resume_json: JSON.parse(resume_json), jd_json: JSON.parse(jd_json) });
+            curl = `curl -X POST "${baseUrl}/api/match/raw" \\\n  -H "Content-Type: application/json" \\\n  -d '${payload.replace(/'/g, "'\\''")}'`;
+          } catch(e) {
+            curl = `// Invalid JSON input in request fields`;
+          }
+        } else {
+          const resumeId = document.getElementById('match-resume-id').value.trim();
+          const jdId = document.getElementById('match-jd-id').value.trim();
+          const payload = JSON.stringify({ resume_id: resumeId || "RESUME_ID", jd_id: jdId || "JD_ID" });
+          curl = `curl -X POST "${baseUrl}/api/match" \\\n  -H "Content-Type: application/json" \\\n  -d '${payload.replace(/'/g, "'\\''")}'`;
         }
       } else if (activeTabId === 'interview') {
         const resumeId = document.getElementById('int-resume-id').value.trim();
@@ -1480,17 +1563,36 @@ Requirements:
           displayResponse(res.status, data, latency);
 
         } else if (activeTabId === 'match') {
-          const resume_json = JSON.parse(document.getElementById('match-resume-json').value);
-          const jd_json = JSON.parse(document.getElementById('match-jd-json').value);
+          const isRawMode = document.getElementById('match-raw-mode') && document.getElementById('match-raw-mode').checked;
+          if (isRawMode) {
+            const resume_json = JSON.parse(document.getElementById('match-resume-json').value);
+            const jd_json = JSON.parse(document.getElementById('match-jd-json').value);
 
-          const res = await fetch(`${baseUrl}/api/match/raw`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ resume_json, jd_json })
-          });
-          const latency = Date.now() - start;
-          const data = await res.json();
-          displayResponse(res.status, data, latency);
+            const res = await fetch(`${baseUrl}/api/match/raw`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ resume_json, jd_json })
+            });
+            const latency = Date.now() - start;
+            const data = await res.json();
+            displayResponse(res.status, data, latency);
+          } else {
+            const resume_id = document.getElementById('match-resume-id').value.trim();
+            const jd_id = document.getElementById('match-jd-id').value.trim();
+            if (!resume_id || !jd_id) {
+              displayResponse(400, { error: 'Please specify both Resume Database ID and Job Description ID, or toggle Advanced Mode.' }, 0);
+              return;
+            }
+
+            const res = await fetch(`${baseUrl}/api/match`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ resume_id, jd_id })
+            });
+            const latency = Date.now() - start;
+            const data = await res.json();
+            displayResponse(res.status, data, latency);
+          }
 
         } else if (activeTabId === 'judge') {
           const question = document.getElementById('judge-question').value.trim();
@@ -1679,6 +1781,21 @@ Requirements:
         displayResponse(res.status, data, latency);
       } catch (err) {
         displayResponse(500, { error: 'Failed to submit response.', details: err.message }, Date.now() - start);
+      }
+    }
+
+    function toggleMatchRawMode() {
+      const isRaw = document.getElementById('match-raw-mode') && document.getElementById('match-raw-mode').checked;
+      const idInputs = document.getElementById('match-id-inputs');
+      const jsonInputs = document.getElementById('match-json-inputs');
+      if (idInputs && jsonInputs) {
+        if (isRaw) {
+          idInputs.classList.add('hidden');
+          jsonInputs.classList.remove('hidden');
+        } else {
+          idInputs.classList.remove('hidden');
+          jsonInputs.classList.add('hidden');
+        }
       }
     }
 

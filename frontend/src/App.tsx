@@ -32,6 +32,37 @@ export function useSession() {
   return context;
 }
 
+// Role guard wrappers
+function RecruiterRoute({ children }: { children: React.ReactNode }) {
+  const role = localStorage.getItem('user_role');
+  if (!role) {
+    return <Navigate to="/login?role=recruiter" replace />;
+  }
+  if (role !== 'recruiter') {
+    return <Navigate to="/student" replace />;
+  }
+  return <>{children}</>;
+}
+
+function StudentRoute({ children }: { children: React.ReactNode }) {
+  const role = localStorage.getItem('user_role');
+  if (!role) {
+    return <Navigate to="/login?role=student" replace />;
+  }
+  if (role !== 'student') {
+    return <Navigate to="/recruiter" replace />;
+  }
+  return <>{children}</>;
+}
+
+function CommonRoute({ children }: { children: React.ReactNode }) {
+  const role = localStorage.getItem('user_role');
+  if (!role) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   const [resumeId, setResumeId] = useState<string | null>(null);
   const [jdId, setJdId] = useState<string | null>(null);
@@ -48,23 +79,23 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               
               {/* Student Portal Routes */}
-              <Route path="/student" element={<StudentAssessment />} />
-              <Route path="/student/readiness" element={<RoleReadiness />} />
-              <Route path="/student/leaderboard" element={<JobLeaderboard />} />
-              <Route path="/assessment/take/:jdId" element={<StudentAssessment />} />
+              <Route path="/student" element={<StudentRoute><StudentAssessment /></StudentRoute>} />
+              <Route path="/student/readiness" element={<StudentRoute><RoleReadiness /></StudentRoute>} />
+              <Route path="/student/leaderboard" element={<StudentRoute><JobLeaderboard /></StudentRoute>} />
+              <Route path="/assessment/take/:jdId" element={<StudentRoute><StudentAssessment /></StudentRoute>} />
               
               {/* Recruiter Portal Routes */}
-              <Route path="/recruiter" element={<Dashboard />} />
-              <Route path="/recruiter/create" element={<Upload />} />
-              <Route path="/recruiter/report" element={<Report />} />
+              <Route path="/recruiter" element={<RecruiterRoute><Dashboard /></RecruiterRoute>} />
+              <Route path="/recruiter/create" element={<RecruiterRoute><Upload /></RecruiterRoute>} />
+              <Route path="/recruiter/report" element={<RecruiterRoute><Report /></RecruiterRoute>} />
               
               <Route path="/dashboard" element={<Navigate to="/recruiter" replace />} />
               <Route path="/upload" element={<Navigate to="/student" replace />} />
               <Route path="/match" element={<Navigate to="/student/readiness" replace />} />
               
               {/* Common protected session routes */}
-              <Route path="/interview" element={<Interview />} />
-              <Route path="/report" element={<Report />} />
+              <Route path="/interview" element={<CommonRoute><Interview /></CommonRoute>} />
+              <Route path="/report" element={<CommonRoute><Report /></CommonRoute>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>

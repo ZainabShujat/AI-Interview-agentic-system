@@ -461,7 +461,7 @@ def _parse_resume_local_fallback(raw_text: str, pre_extracted: dict, link_eviden
         
     return normalized_data
 
-def parse_resume(raw_text: str) -> dict:
+def parse_resume(raw_text: str, filename: Optional[str] = None) -> dict:
     """
     Parses resume using a hybrid approach:
     1. Checks the SQLite/Postgres database cache to avoid LLM calls for seen files.
@@ -494,12 +494,13 @@ def parse_resume(raw_text: str) -> dict:
         db.close()
 
     # Step 1: Pre-extract simple metadata fields locally
+    cand_name = _extract_name(raw_text, filename)
     pre_extracted = {
-        'candidate_name': _extract_name(raw_text),
+        'candidate_name': cand_name,
         'email': extract_email(raw_text),
         'phone': extract_phone(raw_text),
         'location': _extract_location(raw_text),
-        'headline': _extract_headline(raw_text),
+        'headline': _extract_headline(raw_text, cand_name),
     }
 
     # Extract links and verify evidence
@@ -551,21 +552,23 @@ Return JSON matching exactly this schema:
             raw_res = {}
             
         # Combine pre-extracted fields with Gemini's inferred fields
-        parsed_data = {
-            **pre_extracted,
-            **raw_res,
-            'links': [
-                {
-                    'url': evidence['url'],
-                    'type': 'GitHub' if 'github' in evidence['url'].lower() else 'LinkedIn' if 'linkedin' in evidence['url'].lower() else 'Portfolio',
-                    'verified': evidence['status'] == 'fetched',
-                    'summary': evidence.get('text_excerpt', '')[:500],
-                    'skills_found': [],
-                    'projects_found': []
-                }
-                for evidence in link_evidence
-            ]
-        }
+        # Priority mapping: prevent Gemini from overwriting local values with null/wrong keys
+        parsed_data = {**raw_res}
+        for k, v in pre_extracted.items():
+            if v:
+                parsed_data[k] = v
+                
+        parsed_data['links'] = [
+            {
+                'url': evidence['url'],
+                'type': 'GitHub' if 'github' in evidence['url'].lower() else 'LinkedIn' if 'linkedin' in evidence['url'].lower() else 'Portfolio',
+                'verified': evidence['status'] == 'fetched',
+                'summary': evidence.get('text_excerpt', '')[:500],
+                'skills_found': [],
+                'projects_found': []
+            }
+            for evidence in link_evidence
+        ]
         
         normalized_data = normalize_resume_parsed(parsed_data)
         
@@ -585,45 +588,89 @@ Return JSON matching exactly this schema:
         logger.warning(f"Resume Agent Gemini call failed: {e}. Falling back to local heuristic parser.")
         return _parse_resume_local_fallback(raw_text, pre_extracted, link_evidence, resume_hash)
 
-def _extract_name(text: str) -> Optional[str]:
+def _extract_name_from_filename(filename: str) -> Optional[str]:
+    if not filename:
+        return None
+    import os
+    # Strip extension
+    base = os.path.splitext(filename)[0]
+    # Replace non-alphabetic separators with spaces
+    base = re.sub(r'[^A-Za-z\s]', ' ', base)
+    
+    # Generic keywords to discard
+    generic_kws = {
+        'resume', 'cv', 'cover', 'letter', 'job', 'application', 'final', 
+        'draft', 'format', 'english', 'update', 'latest', 'hiring', 
+        'profile', 'portfolio', 'work', 'experience', 'standard', 'official',
+        'candidate', 'assessment', 'template'
+    }
+    
+    words = base.split()
+    cleaned_words = [w for w in words if w.lower() not in generic_kws]
+    
+    if len(cleaned_words) >= 2:
+        name = " ".join([w.capitalize() for w in cleaned_words])
+        if len(name) > 3 and len(name) < 40:
+            return name
+    return None
+
+def _extract_name(text: str, filename: Optional[str] = None) -> Optional[str]:
     lines = [line.strip() for line in text.split('\n') if line.strip()]
     
-    # Exclude common titles/headers to prevent false positive matching as a name
-    excluded_keywords = [
+    # Skip contact info labels and common section titles
+    section_headers = {
         'contact', 'email', 'phone', 'resume', 'cv', 'about', 'summary', 'skills', 
-        'education', 'experience', 'psychologist', 'engineer', 'developer', 'analyst', 
-        'manager', 'trainer', 'teacher', 'intern', 'associate', 'specialist', 'lead', 
-        'consultant', 'director', 'executive', 'student', 'project', 'profile', 
-        'hobbies', 'languages', 'certifications', 'publications', 'university', 'college'
-    ]
+        'education', 'experience', 'projects', 'certifications', 'hobbies', 'languages',
+        'achievements', 'objective', 'profile', 'work', 'history', 'timeline'
+    }
     
-    candidate_lines = []
-    # Scan up to 50 lines to handle side-panel layout order variation
-    for line in lines[:50]:
-        if any(keyword in line.lower() for keyword in excluded_keywords):
+    headline_keywords = {
+        'engineer', 'developer', 'architect', 'analyst', 'manager', 'lead', 'senior', 
+        'junior', 'student', 'intern', 'certified', 'certification', 'associate', 
+        'consultant', 'director', 'specialist', 'professional', 'practitioner',
+        'administrator', 'expert', 'scrum', 'agile'
+    }
+    
+    # 1. Heuristic search in top lines (Resume Header / Text)
+    for line in lines[:8]:
+        line_lower = line.lower()
+        
+        # Skip if contains contact symbols or is too long
+        if '@' in line or '/' in line or '\\' in line or ':' in line or '|' in line or len(line) > 40:
             continue
         if any(char.isdigit() for char in line):
             continue
-        candidate_lines.append(line)
-        
-    for i, line in enumerate(candidate_lines):
+            
+        # Skip if it is a section header or contains headline words
         words = line.split()
-        if not words:
+        if not words or len(words) < 2 or len(words) > 4:
             continue
             
-        # Case 1: Name on a single line (e.g. "Anwesha Choudhury")
-        if len(words) >= 2 and all(word[0].isupper() for word in words if len(word) > 1):
-            if len(line) < 40:
-                return line
+        if any(w.lower() in section_headers for w in words):
+            continue
+        if any(w.lower() in headline_keywords for w in words):
+            continue
+            
+        # Check if all words are capitalized (title case) or uppercase
+        is_capitalized = all(w[0].isupper() or w.isupper() for w in words if w.isalpha())
+        if is_capitalized:
+            return " ".join([w.capitalize() for w in words])
+            
+    # 2. Try filename as a fallback only if header search fails
+    if filename:
+        filename_name = _extract_name_from_filename(filename)
+        if filename_name:
+            return filename_name
+
+    # 3. Fallback to the first line if it's short and has no digits
+    if lines:
+        first_line = lines[0]
+        if len(first_line) < 30 and not any(char.isdigit() for char in first_line) and '@' not in first_line:
+            words = first_line.split()
+            if len(words) >= 1:
+                return " ".join([w.capitalize() for w in words])
                 
-        # Case 2: Name split across consecutive lines (e.g. "Anwesha" on line 1, "Choudhury" on line 2)
-        if len(words) == 1 and words[0][0].isupper() and len(words[0]) > 2:
-            if i + 1 < len(candidate_lines):
-                next_words = candidate_lines[i+1].split()
-                if len(next_words) == 1 and next_words[0][0].isupper() and len(next_words[0]) > 2:
-                    combined = f"{words[0]} {next_words[0]}"
-                    return combined
-    return None
+    return "Candidate Name"
 
 def _extract_location(text: str) -> Optional[str]:
     location_pattern = r'\b([A-Z][a-z]+),\s*([A-Z]{2}|[A-Z][a-z\s]+)\b'
@@ -632,15 +679,17 @@ def _extract_location(text: str) -> Optional[str]:
         return f"{matches[0][0]}, {matches[0][1]}"
     return None
 
-def _extract_headline(text: str) -> Optional[str]:
+def _extract_headline(text: str, candidate_name: Optional[str] = None) -> Optional[str]:
     lines = text.split('\n')
-    for i, line in enumerate(lines[:15]):
+    for line in lines[:15]:
         line = line.strip()
-        if any(keyword in line.lower() for keyword in ['email', 'phone', 'address', 'education', 'experience', 'skills']):
+        if candidate_name and line.lower() == candidate_name.lower():
+            continue
+        if any(keyword in line.lower() for keyword in ['email', 'phone', 'address', 'education', 'experience', 'skills', 'contact']):
             continue
         if 5 < len(line) < 100 and any(title_word in line.lower() for title_word in 
             ['engineer', 'developer', 'architect', 'manager', 'lead', 'senior', 'junior', 
-             'analyst', 'scientist', 'designer', 'director', 'specialist']):
+             'analyst', 'scientist', 'designer', 'director', 'specialist', 'consultant']):
             return line
     return None
 
@@ -669,22 +718,78 @@ def _extract_experience(text: str) -> list:
 
 def _extract_education(text: str) -> list:
     education = []
-    sections = re.split(r'\n(?:EDUCATION|QUALIFICATIONS)\s*\n', text, flags=re.IGNORECASE)
-    edu_section = sections[1] if len(sections) > 1 else text
+    # Split text into sections to locate Education
+    sections = re.split(r'\n(?:EDUCATION|ACADEMIC|ACADEMICS|QUALIFICATIONS|EDUCATION & CREDENTIALS)\s*\n', text, flags=re.IGNORECASE)
+    if len(sections) > 1:
+        edu_block = sections[1]
+        edu_block = re.split(r'\n(?:EXPERIENCE|PROFESSIONAL|WORK|SKILLS|PROJECTS|PUBLICATIONS|CERTIFICATIONS|INTERNSHIPS)\b', edu_block, flags=re.IGNORECASE)[0]
+    else:
+        edu_block = text
+
+    lines = [l.strip() for l in edu_block.split('\n') if l.strip()]
     
-    edu_pattern = r'(?:B\.?[SMA]|Bachelor|Master|Ph\.?D\.?|Diploma|High School|Associate)[^,\n]*?(?:\s+in\s+([A-Z][^,\n]+?))?(?:\s+from\s+([A-Z][^,\n0-9]{10,}))?(?:\s*\(?([0-9]{4})?\)?)?'
-    
-    for match in re.finditer(edu_pattern, edu_section, re.IGNORECASE):
-        degree_match = re.search(r'(B\.?[SMA]|Bachelor|Master|Ph\.?D\.?|Diploma|High School|Associate)[^,\n]*', match.group(0))
-        if degree_match:
-            education.append({
-                'degree': degree_match.group(1),
-                'branch': match.group(1) if match.group(1) else None,
-                'institution': match.group(2) if match.group(2) else None,
-                'year': match.group(3) if match.group(3) else None,
-                'cgpa': None
-            })
-    
+    current_edu = {}
+    degree_keywords = ['bachelor', 'master', 'ph.d', 'phd', 'diploma', 'associate', 'b.s', 'b.a', 'b.tech', 'm.s', 'm.tech', 'm.b.a', 'mba', 'b.c.a', 'm.c.a', 'school', 'bsc', 'msc']
+    inst_keywords = ['university', 'college', 'institute', 'academy', 'school', 'iit', 'nit', 'bits']
+
+    for line in lines:
+        line_lower = line.lower()
+        
+        # Check if line contains a degree
+        found_degree = None
+        for dk in degree_keywords:
+            if re.search(r'\b' + re.escape(dk) + r'\b', line_lower):
+                found_degree = dk.upper()
+                break
+        
+        # Check if line contains an institution
+        found_inst = None
+        for ik in inst_keywords:
+            if re.search(r'\b' + re.escape(ik) + r'\b', line_lower):
+                found_inst = line
+                break
+                
+        # Look for a year
+        year_match = re.search(r'\b(20\d{2}|19\d{2})\b', line)
+        
+        # Look for CGPA
+        cgpa_match = re.search(r'\b(?:gpa|cgpa|grade|score)?\s*:?\s*([0-9]+(?:\.[0-9]+)?(?:\s*/\s*[0-9]+)?)\b', line_lower)
+        
+        if found_degree or found_inst or year_match:
+            if current_edu and found_degree and current_edu.get("degree"):
+                education.append({
+                    "degree": current_edu.get("degree"),
+                    "branch": current_edu.get("branch"),
+                    "institution": current_edu.get("institution") or "University",
+                    "year": current_edu.get("year"),
+                    "cgpa": current_edu.get("cgpa")
+                })
+                current_edu = {}
+                
+            if found_degree:
+                branch_match = re.search(r'(?:in|of)\s+([A-Za-z\s]{3,30})', line, re.IGNORECASE)
+                current_edu["degree"] = line
+                if branch_match:
+                    current_edu["branch"] = branch_match.group(1).strip()
+            
+            if found_inst:
+                current_edu["institution"] = found_inst
+                
+            if year_match:
+                current_edu["year"] = year_match.group(1)
+                
+            if cgpa_match:
+                current_edu["cgpa"] = cgpa_match.group(1).strip()
+                
+    if current_edu:
+        education.append({
+            "degree": current_edu.get("degree") or "Degree",
+            "branch": current_edu.get("branch"),
+            "institution": current_edu.get("institution") or "University",
+            "year": current_edu.get("year"),
+            "cgpa": current_edu.get("cgpa")
+        })
+        
     return education
 
 def _extract_certifications(text: str) -> list:
@@ -940,6 +1045,73 @@ def deterministic_match_resume_and_jd(resume_parsed: dict, jd_parsed: dict) -> d
         {"name": "Assessment Priority", "score": min(100, 55 + (len(missing_required) * 12) + (len(missing_preferred) * 5))}
     ]
 
+    # Generate explainable matching justifications list
+    justifications = []
+    
+    # 1. Required skills match check
+    total_req = len(required)
+    match_req = len(matched_required)
+    if total_req > 0:
+        justifications.append({
+            "type": "success" if match_req >= total_req * 0.7 else "warning",
+            "text": f"Matches {match_req}/{total_req} required skills ({', '.join(_display_skill(s) for s in sorted(matched_required)[:5])}{' and more' if len(matched_required) > 5 else ''})"
+        })
+    else:
+        justifications.append({
+            "type": "success",
+            "text": "No required skills specified in Job Description."
+        })
+        
+    # 2. Experience year check
+    experience_years = resume_parsed.get("estimated_experience_years")
+    if isinstance(experience_years, (int, float)):
+        jd_exp_str = str(jd_parsed.get("experience", "") or "")
+        match_exp = re.search(r'(\d+)', jd_exp_str)
+        if match_exp:
+            jd_req_years = int(match_exp.group(1))
+            if experience_years >= jd_req_years:
+                justifications.append({
+                    "type": "success",
+                    "text": f"Experience exceeds requirement: candidate has {int(experience_years)} years vs {jd_req_years}+ required"
+                })
+            else:
+                justifications.append({
+                    "type": "warning",
+                    "text": f"Experience shortfall: candidate has {int(experience_years)} years vs {jd_req_years}+ required"
+                })
+        else:
+            justifications.append({
+                "type": "success",
+                "text": f"Candidate has {int(experience_years)} years of estimated experience"
+            })
+            
+    # 3. Domain alignment check
+    if domain_score > 0:
+        justifications.append({
+            "type": "success",
+            "text": f"Strong domain alignment: {resume_parsed.get('primary_domain', 'Candidate domain')} matches target domain"
+        })
+    else:
+        justifications.append({
+            "type": "info",
+            "text": "No direct domain overlap detected (candidate domain is different from job description)"
+        })
+        
+    # 4. Gaps checks (up to 3 required missing)
+    for s in sorted(missing_required)[:3]:
+        justifications.append({
+            "type": "warning",
+            "text": f"Missing required skill: {_display_skill(s)}"
+        })
+        
+    # If no certifications
+    has_certs = bool(resume_parsed.get("certifications", []))
+    if not has_certs:
+        justifications.append({
+            "type": "info",
+            "text": "No certifications or professional licenses detected in profile"
+        })
+
     return {
         "matchScore": match_score,
         "calculation": {
@@ -959,6 +1131,7 @@ def deterministic_match_resume_and_jd(resume_parsed: dict, jd_parsed: dict) -> d
         "readinessDetails": readiness_details,
         "strengths": strengths,
         "gaps": gaps,
+        "justifications": justifications,
         "matched_skills": [_display_skill(skill) for skill in sorted(matched_required | matched_preferred)],
         "missing_skills": [_display_skill(skill) for skill in sorted(missing_required | missing_preferred)],
         "additional_skills": [_display_skill(skill) for skill in sorted(additional)],

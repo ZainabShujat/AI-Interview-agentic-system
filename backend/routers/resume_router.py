@@ -101,11 +101,18 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
                     "id": db_resume.id,
                     "filename": file.filename,
                     "parsed": existing_cache.parsed_json,
-                    "raw_resume_text": raw_text
+                    "raw_resume_text": raw_text,
+                    "telemetry": {
+                        "cached": True,
+                        "model": "SQLite Cache",
+                        "cost": 0.0,
+                        "mode": "Cache Lookup",
+                        "fallback": False
+                    }
                 }
 
         # 3. Parse text using Gemini Resume Agent (handles local extraction, LLM parsing, and DB caching)
-        parsed_data = gemini_service.parse_resume(raw_text)
+        parsed_data = gemini_service.parse_resume(raw_text, filename=file.filename)
         
         # 4. Fetch or insert the Resume entity record for relational mapping
         db_resume = db.query(models.Resume).filter(models.Resume.raw_text == raw_text).first()
@@ -133,7 +140,14 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
             "id": db_resume.id,
             "filename": file.filename,
             "parsed": db_resume.parsed_json,
-            "raw_resume_text": db_resume.raw_text
+            "raw_resume_text": db_resume.raw_text,
+            "telemetry": {
+                "cached": False,
+                "model": "Gemini 2.5 Flash" if gemini_service.GEMINI_API_KEY else "Local Rules Heuristics",
+                "cost": 0.00008 if gemini_service.GEMINI_API_KEY else 0.0,
+                "mode": "Hybrid",
+                "fallback": not bool(gemini_service.GEMINI_API_KEY)
+            }
         }
         
     except ValueError as ve:

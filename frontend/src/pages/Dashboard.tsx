@@ -188,9 +188,13 @@ export default function Dashboard() {
 
             <div className="border-t border-subtle pt-4" style={{ borderColor: 'var(--color-border-subtle)' }}>
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-xs font-bold text-white">AJ</div>
+                <div className="w-9 h-9 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-xs font-bold text-white">
+                  {localStorage.getItem('user_name') ? localStorage.getItem('user_name')!.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'AJ'}
+                </div>
                 <div>
-                  <span className="text-xs font-semibold text-white block">Arjun V.</span>
+                  <span className="text-xs font-semibold text-white block">
+                    {localStorage.getItem('user_name') || 'Arjun V.'}
+                  </span>
                   <span className="text-[10px] block" style={{ color: 'var(--color-text-tertiary)' }}>Talent Acquisition Lead</span>
                 </div>
               </div>
@@ -222,10 +226,23 @@ export default function Dashboard() {
         {/* Right Dashboard Area */}
         <div className="md:col-span-9 space-y-6">
           
+          <div className="p-3 text-[11px] rounded-lg border flex items-start gap-2.5" style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.25)', color: 'var(--color-text-primary)' }}>
+            <div className="mt-0.5 text-indigo-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <p className="leading-normal">
+              <strong>Demo Workspace Notice:</strong> To help you evaluate the platform immediately, this workspace is pre-populated with **sample job descriptions and candidate submissions**. You can upload your own files to verify the agent's real-time parser outputs.
+            </p>
+          </div>
+
           {/* Internal Title Header with Filter bar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-white leading-tight">Good morning, Arjun 👋</h3>
+              <h3 className="text-lg font-bold text-white leading-tight">
+                Good morning, {localStorage.getItem('user_name') ? localStorage.getItem('user_name')!.split(' ')[0] : 'Arjun'} 👋
+              </h3>
               <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>Here is what is happening with your hiring pipeline today.</p>
             </div>
             

@@ -47,6 +47,17 @@ export default function JobLeaderboard() {
 
         <section className="lg:col-span-8">
           <div className="card-premium p-8">
+            <div className="p-3 mb-5 text-[11px] rounded-lg border flex items-start gap-2.5" style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.25)', color: 'var(--color-text-primary)' }}>
+              <div className="mt-0.5 text-indigo-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <p className="leading-normal">
+                <strong>Demo Workspace Notice:</strong> To demonstrate the ranking engine immediately, this leaderboard includes **sample candidate scores**. Your score will dynamically position itself here once you complete the interview.
+              </p>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-subtle pb-5">
               <div>
                 <span className="text-[10px] uppercase tracking-widest font-bold text-theme-tertiary block mb-2">
