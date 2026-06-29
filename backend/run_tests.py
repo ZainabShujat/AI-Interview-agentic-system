@@ -17,6 +17,7 @@ try:
     test_agents.test_match_agent()
     test_agents.test_question_generator()
     test_agents.test_judge_agent()
+    test_agents.test_career_roadmap_agent()
     print("--- All tests completed successfully! ---")
 except Exception as e:
     print(f"Exception during test execution: {e}")

@@ -43,6 +43,18 @@ def test_judge_agent():
     assert "accuracy" in eval_res, "Evaluation result missing accuracy score"
     print("Judge Agent OK")
 
+def test_career_roadmap_agent():
+    print("Testing Career Intelligence Roadmap Agent...")
+    res = gemini_service.generate_career_roadmap(
+        resume={"candidate_name": "Test Candidate", "skills": ["React"]},
+        target_role="DevOps Engineer",
+        target_company="Google"
+    )
+    assert "current_readiness" in res, "Readiness missing in roadmap result"
+    assert "weekly_milestones" in res, "Weekly plan missing in roadmap result"
+    assert "resume_checkpoint_upgrades" in res, "Checkpoints missing in roadmap result"
+    print("Career Intelligence Agent OK")
+
 if __name__ == "__main__":
     print("--- Running AI Agent Verification Suite ---")
     try:
@@ -51,6 +63,7 @@ if __name__ == "__main__":
         test_match_agent()
         test_question_generator()
         test_judge_agent()
+        test_career_roadmap_agent()
         print("--- All tests completed successfully! ---")
     except AssertionError as e:
         print(f"Test assertion failed: {e}")

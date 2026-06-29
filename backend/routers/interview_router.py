@@ -187,7 +187,8 @@ async def submit_answer(payload: schemas.AnswerSubmitRequest, db: Session = Depe
             return {
                 "question": "",
                 "category": "",
-                "finished": True
+                "finished": True,
+                "evaluation": evaluation
             }
             
         next_category = category_queue[next_idx]
@@ -213,7 +214,8 @@ async def submit_answer(payload: schemas.AnswerSubmitRequest, db: Session = Depe
         return {
             "question": next_question,
             "category": next_category,
-            "finished": False
+            "finished": False,
+            "evaluation": evaluation
         }
         
     except Exception as e:

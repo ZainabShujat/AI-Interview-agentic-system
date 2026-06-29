@@ -26,6 +26,17 @@ def call_gemini_json(prompt: str) -> dict:
     if not GEMINI_API_KEY:
         raise ValueError("API Key missing")
 
+    import datetime
+    now = datetime.datetime.now()
+    current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    current_year = now.year
+    context_prefix = (
+        f"[SYSTEM NOTE: The current real-world date and time is {current_time_str}. "
+        f"Do NOT treat dates from {current_year - 1}, {current_year}, or earlier as 'future' plans; "
+        f"the current year is {current_year}. Any references to dates on or before {current_year} represent past or active current activities.]\n\n"
+    )
+    prompt = context_prefix + prompt
+
     model_candidates = []
     for model_name in [GEMINI_MODEL, *GEMINI_MODEL_FALLBACKS]:
         if model_name and model_name not in model_candidates:

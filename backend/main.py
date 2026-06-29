@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
-from routers import resume_router, jd_router, match_router, interview_router
+from routers import resume_router, jd_router, match_router, interview_router, roadmap_router
 
 # Initialize database tables
 Base.metadata.create_all(bind=engine)
@@ -28,6 +28,7 @@ app.include_router(resume_router.router)
 app.include_router(jd_router.router)
 app.include_router(match_router.router)
 app.include_router(interview_router.router)
+app.include_router(roadmap_router.router)
 
 @app.get("/")
 def read_root():

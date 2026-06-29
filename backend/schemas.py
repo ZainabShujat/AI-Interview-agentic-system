@@ -123,3 +123,9 @@ class ResumeResponse(BaseModel):
     parsed: Optional[ResumeAnalysisSchema] = None
     raw_resume_text: Optional[str] = None
 
+class RoadmapRequest(BaseModel):
+    resume: Dict[str, Any]
+    target_role: Optional[str] = None
+    target_company: Optional[str] = None
+    target_jd: Optional[Dict[str, Any]] = None
+

@@ -31,6 +31,17 @@ def call_gemini_json(prompt: str) -> dict:
     if not GEMINI_API_KEY:
         raise ValueError("API Key missing")
 
+    import datetime
+    now = datetime.datetime.now()
+    current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    current_year = now.year
+    context_prefix = (
+        f"[SYSTEM NOTE: The current real-world date and time is {current_time_str}. "
+        f"Do NOT treat dates from {current_year - 1}, {current_year}, or earlier as 'future' plans; "
+        f"the current year is {current_year}. Any references to dates on or before {current_year} represent past or active current activities.]\n\n"
+    )
+    prompt = context_prefix + prompt
+
     model_candidates = []
     for model_name in [GEMINI_MODEL, *GEMINI_MODEL_FALLBACKS]:
         if model_name and model_name not in model_candidates:
@@ -406,7 +417,17 @@ def parse_resume(raw_text: str) -> dict:
     try:
         existing = db.query(models.ResumeCache).filter(models.ResumeCache.raw_text_hash == resume_hash).first()
         if existing and existing.parsed_json:
-            return existing.parsed_json
+            cached_name = existing.parsed_json.get("candidate_name")
+            is_valid_cache = True
+            if cached_name:
+                c_lower = cached_name.lower()
+                if any(kw in c_lower for kw in ['psychologist', 'engineer', 'developer', 'trainer', 'intern']):
+                    is_valid_cache = False
+            else:
+                is_valid_cache = False
+                
+            if is_valid_cache:
+                return existing.parsed_json
     except Exception as e:
         logger.warning(f"Failed to query ResumeCache: {e}")
     finally:
@@ -559,17 +580,44 @@ Return JSON matching exactly this schema:
     except Exception as e:
         raise RuntimeError(f"Resume Agent failed while using Gemini API: {e}") from e
 
-# Helper extraction functions
 def _extract_name(text: str) -> Optional[str]:
-    lines = text.split('\n')
-    for line in lines[:10]:
-        line = line.strip()
-        if any(keyword in line.lower() for keyword in ['contact', 'email', 'phone', 'resume', 'cv']):
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    
+    # Exclude common titles/headers to prevent false positive matching as a name
+    excluded_keywords = [
+        'contact', 'email', 'phone', 'resume', 'cv', 'about', 'summary', 'skills', 
+        'education', 'experience', 'psychologist', 'engineer', 'developer', 'analyst', 
+        'manager', 'trainer', 'teacher', 'intern', 'associate', 'specialist', 'lead', 
+        'consultant', 'director', 'executive', 'student', 'project', 'profile', 
+        'hobbies', 'languages', 'certifications', 'publications', 'university', 'college'
+    ]
+    
+    candidate_lines = []
+    # Scan up to 50 lines to handle side-panel layout order variation
+    for line in lines[:50]:
+        if any(keyword in line.lower() for keyword in excluded_keywords):
             continue
-        if len(line) > 2 and len(line) < 60 and line[0].isupper():
-            words = line.split()
-            if len(words) >= 2 and all(word[0].isupper() for word in words if len(word) > 1):
+        if any(char.isdigit() for char in line):
+            continue
+        candidate_lines.append(line)
+        
+    for i, line in enumerate(candidate_lines):
+        words = line.split()
+        if not words:
+            continue
+            
+        # Case 1: Name on a single line (e.g. "Anwesha Choudhury")
+        if len(words) >= 2 and all(word[0].isupper() for word in words if len(word) > 1):
+            if len(line) < 40:
                 return line
+                
+        # Case 2: Name split across consecutive lines (e.g. "Anwesha" on line 1, "Choudhury" on line 2)
+        if len(words) == 1 and words[0][0].isupper() and len(words[0]) > 2:
+            if i + 1 < len(candidate_lines):
+                next_words = candidate_lines[i+1].split()
+                if len(next_words) == 1 and next_words[0][0].isupper() and len(next_words[0]) > 2:
+                    combined = f"{words[0]} {next_words[0]}"
+                    return combined
     return None
 
 def _extract_location(text: str) -> Optional[str]:
@@ -1675,3 +1723,175 @@ def get_mock_report_final(all_qa: list, memory: dict) -> dict:
       "communicationProfile": profile,
       "all_qa": all_qa
     }
+
+def get_mock_career_roadmap(resume_parsed: dict, target_role: str, target_company: str, target_jd: dict) -> dict:
+    return {
+      "current_readiness": 68,
+      "estimated_time": "4 Months",
+      "success_probability": "High",
+      "missing_skills": ["Docker", "Kubernetes", "CI/CD Platforms", "Apache Kafka"],
+      "weekly_milestones": [
+        {
+          "week": "Weeks 1-2",
+          "focus": "Foundations & Docker containerization",
+          "tasks": [
+            "Learn containerization basics: Dockerfile, volumes, and networks.",
+            "Containerize the local python interview microservices application.",
+            "Deploy the container locally and practice mapping environment variables."
+          ]
+        },
+        {
+          "week": "Weeks 3-4",
+          "focus": "Kubernetes orchestration basics",
+          "tasks": [
+            "Understand Kubernetes Pods, Deployments, and Services schemas.",
+            "Write basic YAML manifests to run the containerized python application.",
+            "Deploy onto a local minikube cluster and verify logs."
+          ]
+        },
+        {
+          "week": "Weeks 5-8",
+          "focus": "CI/CD & AWS Deployment pipelines",
+          "tasks": [
+            "Set up a GitHub Actions workflow to build and test code on every push.",
+            "Integrate Docker build and push to Amazon ECR.",
+            "Deploy to Amazon ECS (Fargate) using GitHub Actions secrets."
+          ]
+        },
+        {
+          "week": "Weeks 9-12",
+          "focus": "High-throughput messaging & system design",
+          "tasks": [
+            "Familiarize with Apache Kafka topics, producers, and consumer-groups.",
+            "Implement a test producer and consumer inside python to process mock logs.",
+            "Draft a multi-region scalable system design blueprint for high-frequency hiring data."
+          ]
+        }
+      ],
+      "projects_to_build": [
+        {
+          "title": "Scalable Containerized Interview Simulator",
+          "spec": "FastAPI + Docker + minikube + GitHub Actions",
+          "tasks": [
+            "Write a multi-stage Dockerfile to shrink image size.",
+            "Configure a local minikube cluster to run backend nodes behind a LoadBalancer service.",
+            "Create a GitHub Actions CI pipeline mapping secrets to build clean images."
+          ]
+        },
+        {
+          "title": "Event-Driven Log Analytics Queue",
+          "spec": "FastAPI + Kafka + Docker Compose",
+          "tasks": [
+            "Set up a single-node Kafka broker using Docker Compose.",
+            "Develop a background publisher node sending interview evaluations data.",
+            "Run multiple consumer nodes executing log processing in parallel."
+          ]
+        }
+      ],
+      "learning_resources": [
+        {
+          "name": "Docker and Kubernetes: The Complete Guide",
+          "type": "Course / Reference",
+          "link": "https://www.udemy.com/"
+        },
+        {
+          "name": "Confluent Kafka Developer Tutorials",
+          "type": "Documentation",
+          "link": "https://developer.confluent.io/"
+        }
+      ],
+      "resume_checkpoint_upgrades": [
+        {
+          "milestone": "Month 1",
+          "checkpoints": [
+            "Add the 'Containerized Interview Simulator' project description to the projects section.",
+            "List 'Docker' and 'Kubernetes' under technical skills list."
+          ]
+        },
+        {
+          "milestone": "Month 2",
+          "checkpoints": [
+            "Update the 'Work Experience' or 'Projects' sections to highlight GitHub Actions CI/CD automation pipelines.",
+            "Add 'AWS ECR/ECS' to the tools section."
+          ]
+        },
+        {
+          "milestone": "Month 3",
+          "checkpoints": [
+            "Highlight event-driven architecture experience with 'Apache Kafka' inside the projects section.",
+            "Re-run readiness analysis on HireIntel to verify name scores."
+          ]
+        }
+      ]
+    }
+
+def generate_career_roadmap(resume: dict, target_role: Optional[str] = None, target_company: Optional[str] = None, target_jd: Optional[dict] = None) -> dict:
+    if not GEMINI_API_KEY:
+        return get_mock_career_roadmap(resume, target_role or "", target_company or "", target_jd or {})
+        
+    prompt = f"""
+    You are a Senior Career Mentor & Coach Agent. Your job is to create a realistic, personalized, and highly actionable learning roadmap and resume upgrade checkpoint list.
+    
+    Candidate Resume:
+    {json.dumps(resume, indent=2)}
+    
+    Target Role: {target_role or "N/A"}
+    Target Company: {target_company or "N/A"}
+    Target Job Description (JD):
+    {json.dumps(target_jd, indent=2) if target_jd else "N/A"}
+    
+    Analyze:
+    - Current strengths vs Gaps (Skills, Projects, Experience, Certifications).
+    - Map readiness percentage score (integer 0 to 100) and Success Probability ("Low", "Medium", "High").
+    - Estimate the timeline in months (e.g. "3 Months", "4 Months").
+    
+    Formulate:
+    1. A list of specific "missing_skills".
+    2. A week-by-week or phase-by-phase learning "weekly_milestones" plan. Include containerized, specific action tasks (e.g. instead of "Learn React", say "Week 3: Learn React routing -> Implement navigation -> Deploy page").
+    3. Specific personalized "projects_to_build" (with title, target technical specs, and subtasks) tailored to bridge their project/experience gaps.
+    4. Relevant "learning_resources" links or course topics.
+    5. Actionable "resume_checkpoint_upgrades" mapped to monthly milestones (telling the candidate exactly what projects or certifications to add to their resume over time).
+    
+    Guidelines:
+    - Tailor the plan dynamically to what the candidate *already knows* (e.g. if they already know React, do NOT tell them to learn basic React; focus on advanced optimizations or gaps).
+    - Return ONLY valid JSON format.
+    
+    Return JSON matching exactly this schema:
+    {{
+      "current_readiness": 72,
+      "estimated_time": "4 Months",
+      "success_probability": "High",
+      "missing_skills": ["Docker", "Kubernetes"],
+      "weekly_milestones": [
+        {{
+          "week": "Weeks 1-2",
+          "focus": "Topic details",
+          "tasks": ["Task 1 description", "Task 2 description"]
+        }}
+      ],
+      "projects_to_build": [
+        {{
+          "title": "Project Title",
+          "spec": "Tech stack details",
+          "tasks": ["Subtask 1", "Subtask 2"]
+        }}
+      ],
+      "learning_resources": [
+        {{
+          "name": "Resource Name",
+          "type": "Type description",
+          "link": "URL link (if known, or placeholder)"
+        }}
+      ],
+      "resume_checkpoint_upgrades": [
+        {{
+          "milestone": "Month 1",
+          "checkpoints": ["Action 1 details", "Action 2 details"]
+        }}
+      ]
+    }}
+    """
+    try:
+        return call_gemini_json(prompt)
+    except Exception as e:
+        raise RuntimeError(f"Career Intelligence Agent failed while using Gemini API: {e}") from e

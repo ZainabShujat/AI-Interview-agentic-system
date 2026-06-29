@@ -162,6 +162,15 @@
         </button>
 
         <button 
+          id="tab-btn-roadmap"
+          onclick="switchTab('roadmap')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">Career Intelligence</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Map personalized roadmap targets & success paths.</span>
+        </button>
+
+        <button 
           id="tab-btn-report"
           onclick="switchTab('report')" 
           class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
@@ -183,6 +192,7 @@
           <div id="health-match" class="flex justify-between items-center text-slate-400">Match Agent: <span class="text-slate-600 font-mono">-- ms</span></div>
           <div id="health-interview" class="flex justify-between items-center text-slate-400">Interview Agent: <span class="text-slate-600 font-mono">-- ms</span></div>
           <div id="health-judge" class="flex justify-between items-center text-slate-400">Judge Agent: <span class="text-slate-600 font-mono">-- ms</span></div>
+          <div id="health-roadmap" class="flex justify-between items-center text-slate-400">Career Agent: <span class="text-slate-600 font-mono">-- ms</span></div>
           <div id="health-report" class="flex justify-between items-center text-slate-400">Report Agent: <span class="text-slate-600 font-mono">-- ms</span></div>
         </div>
       </div>
@@ -371,6 +381,31 @@ Requirements:
           needs_followup: false,
           followup_count: 0
         }
+      },
+      roadmap: {
+        resume: {
+          candidate_name: "Aarav Sharma",
+          email: "aarav.sharma@email.com",
+          primary_domain: "Frontend Engineering",
+          estimated_experience_years: 6,
+          skills: ["React", "TypeScript", "Tailwind CSS", "Zustand", "HTML5", "CSS3", "Webpack"],
+          experience: [
+            {
+              title: "Senior React Engineer",
+              company: "TechSolutions Inc.",
+              duration: "2021 - Present",
+              responsibilities: ["Lead frontend migration to React 18 & TS", "Optimized Webpack bundling reducing bundle sizes by 30%"]
+            }
+          ]
+        },
+        target_role: "Cloud Native Engineer",
+        target_company: "Google",
+        target_jd: {
+          title: "Senior DevOps / Cloud Native Engineer",
+          required_skills: ["Docker", "Kubernetes", "CI/CD", "AWS", "Terraform", "Linux"],
+          preferred_skills: ["Go", "Prometheus", "Service Mesh"],
+          seniority: "Senior"
+        }
       }
     };
 
@@ -476,6 +511,39 @@ Requirements:
             </div>
           </div>
         `;
+      } else if (activeTabId === 'roadmap') {
+        // Pre-populate parsed Resume JSON and JD JSON from last actions if available
+        let rJson = templates.roadmap.resume;
+        if (lastFetchedResponse && activeTabId === 'roadmap' && lastFetchedResponse.candidate_name) {
+          rJson = lastFetchedResponse;
+        }
+        let jdJson = templates.roadmap.target_jd;
+        
+        html = `
+          <div class="space-y-4 h-full flex flex-col">
+            <p class="text-xs text-slate-400">Expose and test the Career Intelligence Agent. Feed in direct candidate resume profiles and goal targets (desired role, target company, or job description details) to compile personalized weekly study milestones and checklists.</p>
+            <div class="space-y-3 flex-grow overflow-y-auto pr-1">
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Candidate Resume JSON</label>
+                <textarea id="roadmap-resume-json" class="w-full h-36 bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[11px] font-mono focus:outline-none focus:border-indigo-500 text-indigo-300 resize-none leading-relaxed">${JSON.stringify(rJson, null, 2)}</textarea>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] uppercase font-bold text-slate-500">Desired Role</label>
+                  <input id="roadmap-role" type="text" value="${templates.roadmap.target_role}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-sans text-slate-300 focus:outline-none" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] uppercase font-bold text-slate-500">Target Company</label>
+                  <input id="roadmap-company" type="text" value="${templates.roadmap.target_company}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-sans text-slate-300 focus:outline-none" />
+                </div>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Target JD JSON (Optional)</label>
+                <textarea id="roadmap-jd-json" class="w-full h-36 bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[11px] font-mono focus:outline-none focus:border-indigo-500 text-indigo-300 resize-none leading-relaxed">${JSON.stringify(jdJson, null, 2)}</textarea>
+              </div>
+            </div>
+          </div>
+        `;
       } else if (activeTabId === 'report') {
         html = `
           <div class="space-y-4 h-full flex flex-col">
@@ -515,6 +583,7 @@ Requirements:
         match: ['Readiness Match', 'POST /api/match/raw', 'Evaluates alignments from direct JSON inputs.'],
         interview: ['Interview Simulation', 'POST /api/interview/start', 'Simulates dynamic questions and answers.'],
         judge: ['Judge Agent', 'POST /api/interview/judge', 'Evaluates answer transcripts against criteria.'],
+        roadmap: ['Career Intelligence', 'POST /api/roadmap', 'Formulates learning pathways, project specifications, and resume checkpoints.'],
         report: ['Report Agent', 'POST /api/interview/report/raw', 'Compiles QA history & memory into report summaries.']
       };
 
@@ -902,6 +971,81 @@ Requirements:
             </div>
           </div>
         `;
+      } else if (tabId === 'interview') {
+        if (!interviewHistory || interviewHistory.length === 0) {
+          html = `
+            <div class="flex flex-col items-center justify-center py-12 text-center text-xs text-slate-500">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-slate-700 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span>No active interview chat session. Click "Start Session" in the Request Builder to begin.</span>
+            </div>
+          `;
+        } else {
+          html = `
+            <div class="flex flex-col h-[520px] justify-between text-xs font-sans min-h-0">
+              <!-- Chat Timeline Area -->
+              <div class="flex-grow overflow-y-auto space-y-4 pr-1 mb-4">
+                ${interviewHistory.map((item, idx) => {
+                  let chatHtml = `
+                    <!-- Question bubble (left-aligned) -->
+                    <div class="flex flex-col items-start gap-1">
+                      <div class="flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase">
+                        <span>Q${idx + 1} • ${item.category}</span>
+                        <span class="text-indigo-400">★ ${item.difficulty}</span>
+                      </div>
+                      <div class="bg-indigo-650/10 border border-indigo-500/20 text-slate-200 px-4 py-3 rounded-xl rounded-tl-none max-w-[85%] leading-relaxed shadow-sm">
+                        ${item.question}
+                      </div>
+                    </div>
+                  `;
+                  
+                  if (item.answer) {
+                    let statsHtml = "";
+                    if (item.evaluation) {
+                      const acc = item.evaluation.accuracy || 0;
+                      const depth = item.evaluation.depth || 0;
+                      const comm = item.evaluation.communication || 0;
+                      statsHtml = `
+                        <div class="mt-2 pt-2 border-t border-teal-500/20 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-teal-300 font-bold">
+                          <span>Acc: ${acc}%</span>
+                          <span>Depth: ${depth}%</span>
+                          <span>Comm: ${comm}%</span>
+                          <span>Pace: ${Math.round(item.latencySec)}s</span>
+                        </div>
+                      `;
+                    } else {
+                      statsHtml = `
+                        <div class="mt-1 text-[9px] text-slate-500 italic">
+                          Pacing: ${Math.round(item.latencySec)}s • Word count: ${item.wordCount} words
+                        </div>
+                      `;
+                    }
+                    
+                    chatHtml += `
+                      <!-- Answer bubble (right-aligned) -->
+                      <div class="flex flex-col items-end gap-1 mt-2">
+                        <div class="text-[10px] text-slate-500 font-bold uppercase text-right">Candidate Answer</div>
+                        <div class="bg-teal-950/20 border border-teal-500/20 text-slate-300 px-4 py-3 rounded-xl rounded-tr-none max-w-[85%] leading-relaxed shadow-sm self-end">
+                          <div>${item.answer}</div>
+                          ${statsHtml}
+                        </div>
+                      </div>
+                    `;
+                  }
+                  
+                  return chatHtml;
+                }).join('')}
+              </div>
+              
+              <!-- Session Status Header/Footer -->
+              <div class="border-t border-slate-900 pt-3 flex items-center justify-between text-[10px] text-slate-500 font-bold">
+                <span>Active Question Index: ${currentQuestionIndex}</span>
+                <span class="text-indigo-400 font-mono">${isInterviewActive ? "🟢 SIMULATOR LIVE" : "🔴 COMPLETED"}</span>
+              </div>
+            </div>
+          `;
+        }
       } else if (tabId === 'judge') {
         const score = data.accuracy || 0;
         const depth = data.depth || 0;
@@ -980,6 +1124,98 @@ Requirements:
             </div>
           </div>
         `;
+      } else if (tabId === 'roadmap') {
+        const readiness = data.current_readiness || 0;
+        const timeline = data.estimated_time || "N/A";
+        const probability = data.success_probability || "Medium";
+        const missing = data.missing_skills || [];
+        const milestones = data.weekly_milestones || [];
+        const projects = data.projects_to_build || [];
+        const checkpoints = data.resume_checkpoint_upgrades || [];
+
+        html = `
+          <div class="space-y-4 text-xs">
+            <!-- Top Dashboard Stats -->
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="text-sm font-bold text-white">Career Intelligence Summary</h3>
+                <p class="text-[10px] text-slate-400 mt-0.5">Success probability: <span class="font-bold text-indigo-400">${probability}</span></p>
+              </div>
+              <div class="flex gap-4 text-right">
+                <div>
+                  <span class="text-lg font-black text-emerald-400 block">${readiness}%</span>
+                  <span class="text-[9px] text-slate-500 block">Readiness</span>
+                </div>
+                <div>
+                  <span class="text-lg font-black text-indigo-400 block">${timeline}</span>
+                  <span class="text-[9px] text-slate-500 block">Duration</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gaps list -->
+            <div>
+              <span class="text-[10px] uppercase font-bold text-rose-400 block mb-1">Target Skills Gap Focus</span>
+              <div class="flex flex-wrap gap-1">
+                ${missing.map(m => `<span class="bg-rose-500/10 text-rose-300 px-2 py-0.5 rounded border border-rose-500/20 text-[9px] font-mono">${m}</span>`).join('') || '<span class="text-slate-500">None detected</span>'}
+              </div>
+            </div>
+
+            <!-- Timeline Milestones -->
+            <div>
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-2">Weekly Milestones & Focus Path</span>
+              <div class="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                ${milestones.map(m => `
+                  <div class="bg-slate-900/60 border border-slate-800 p-2 rounded-lg">
+                    <div class="flex justify-between items-center mb-1 text-[10px] font-bold text-indigo-300">
+                      <span>${m.week}</span>
+                      <span class="text-slate-400 font-sans">${m.focus}</span>
+                    </div>
+                    <ul class="list-disc pl-3 text-slate-400 space-y-0.5 text-[9px]">
+                      ${(m.tasks || []).map(t => `<li>${t}</li>`).join('')}
+                    </ul>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Projects & Specifications -->
+            <div>
+              <span class="text-[10px] uppercase font-bold text-teal-400 block mb-2">Target Bridge Projects</span>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                ${projects.map(p => `
+                  <div class="bg-slate-900/60 border border-slate-800/80 p-2 rounded-lg">
+                    <div class="text-[10px] font-bold text-white mb-0.5">${p.title}</div>
+                    <div class="text-[9px] font-mono text-teal-300 mb-1.5">${p.spec}</div>
+                    <ul class="list-disc pl-3 text-slate-400 space-y-0.5 text-[9px]">
+                      ${(p.tasks || []).map(t => `<li>${t}</li>`).join('')}
+                    </ul>
+                  </div>
+                `).join('') || '<div class="text-slate-500 italic">No custom projects required</div>'}
+              </div>
+            </div>
+
+            <!-- Resume Upgrade Checklist -->
+            <div>
+              <span class="text-[10px] uppercase font-bold text-amber-400 block mb-2">Resume Upgrade Checkpoints</span>
+              <div class="space-y-2 max-h-[120px] overflow-y-auto pr-1">
+                ${checkpoints.map((c, cIdx) => `
+                  <div class="bg-slate-900/60 border border-slate-800 p-2 rounded-lg">
+                    <div class="text-[10px] font-bold text-amber-300 mb-1">${c.milestone} Checkpoint</div>
+                    <div class="space-y-1">
+                      ${(c.checkpoints || []).map((cp, idx) => `
+                        <label class="flex items-start gap-2 cursor-pointer text-slate-400 hover:text-white">
+                          <input type="checkbox" id="chk-${cIdx}-${idx}" class="mt-0.5 h-3 w-3 accent-amber-500 rounded border-slate-700 bg-slate-900 text-slate-800" />
+                          <span class="text-[9px] leading-relaxed">${cp}</span>
+                        </label>
+                      `).join('')}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
       } else {
         html = `<div class="text-center py-10 text-xs text-slate-500">Visual layout view for this agent is coming soon.</div>`;
       }
@@ -994,6 +1230,7 @@ Requirements:
       { name: 'Match Agent', endpoint: '/api/match/raw', method: 'POST', id: 'health-match' },
       { name: 'Interview Agent', endpoint: '/api/interview/reports', method: 'GET', id: 'health-interview' },
       { name: 'Judge Agent', endpoint: '/api/interview/judge', method: 'POST', id: 'health-judge' },
+      { name: 'Career Agent', endpoint: '/api/roadmap', method: 'POST', id: 'health-roadmap' },
       { name: 'Report Agent', endpoint: '/api/interview/report/raw', method: 'POST', id: 'health-report' }
     ];
 
@@ -1122,6 +1359,17 @@ Requirements:
         } catch(e) {
           curl = `// Invalid JSON input in signals`;
         }
+      } else if (activeTabId === 'roadmap') {
+        try {
+          const resume = JSON.parse(document.getElementById('roadmap-resume-json').value);
+          const target_role = document.getElementById('roadmap-role').value.trim();
+          const target_company = document.getElementById('roadmap-company').value.trim();
+          const target_jd = JSON.parse(document.getElementById('roadmap-jd-json').value);
+          const payload = JSON.stringify({ resume, target_role, target_company, target_jd });
+          curl = `curl -X POST "${baseUrl}/api/roadmap" \\\n  -H "Content-Type: application/json" \\\n  -d '${payload.replace(/'/g, "'\\''")}'`;
+        } catch(e) {
+          curl = `// Invalid JSON input in request fields`;
+        }
       } else if (activeTabId === 'report') {
         try {
           const all_qa = JSON.parse(document.getElementById('report-qa-json').value);
@@ -1156,6 +1404,7 @@ Requirements:
         match: 'match_result.json',
         interview: 'interview_session.json',
         judge: 'judge_evaluation.json',
+        roadmap: 'career_roadmap.json',
         report: 'report.json'
       };
       
@@ -1233,6 +1482,21 @@ Requirements:
           const data = await res.json();
           displayResponse(res.status, data, latency);
 
+        } else if (activeTabId === 'roadmap') {
+          const resume = JSON.parse(document.getElementById('roadmap-resume-json').value);
+          const target_role = document.getElementById('roadmap-role').value.trim();
+          const target_company = document.getElementById('roadmap-company').value.trim();
+          const target_jd = JSON.parse(document.getElementById('roadmap-jd-json').value);
+
+          const res = await fetch(`${baseUrl}/api/roadmap`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resume, target_role, target_company, target_jd })
+          });
+          const latency = Date.now() - start;
+          const data = await res.json();
+          displayResponse(res.status, data, latency);
+
         } else if (activeTabId === 'report') {
           const all_qa = JSON.parse(document.getElementById('report-qa-json').value);
           const memory = JSON.parse(document.getElementById('report-memory-json').value);
@@ -1251,6 +1515,13 @@ Requirements:
         displayResponse(500, { error: 'Failed to connect to agent backend. Make sure the backend server is running and CORS is enabled.', details: err.message }, latency);
       }
     }
+
+    // State variables for Interview simulator
+    let currentQuestionText = "";
+    let currentCategory = "";
+    let currentQuestionIndex = 0;
+    let interviewHistory = [];
+    let isInterviewActive = false;
 
     // Interview specific helper functions
     async function startInterviewSession() {
@@ -1277,6 +1548,24 @@ Requirements:
         
         if (data.interview_id) {
           document.getElementById('int-interview-id').value = data.interview_id;
+          currentQuestionText = data.question || "";
+          currentCategory = data.category || "Technical";
+          currentQuestionIndex = 1;
+          isInterviewActive = true;
+          
+          // Initialize chat history log
+          interviewHistory = [{
+            question: currentQuestionText,
+            category: currentCategory,
+            difficulty: 'Medium',
+            answer: null,
+            evaluation: null,
+            latencySec: 0,
+            wordCount: 0
+          }];
+          
+          // Switch response view to Visual Preview
+          setResponseView('preview');
         }
         displayResponse(res.status, data, latency);
       } catch (err) {
@@ -1289,13 +1578,27 @@ Requirements:
       const interviewId = document.getElementById('int-interview-id').value.trim();
       const answer = document.getElementById('int-answer').value.trim();
 
-      if (!interviewId || !answer) {
-        alert('Please provide both the Interview Session ID and typed answer response.');
+      if (!interviewId || !isInterviewActive) {
+        alert('Please start the simulation first by clicking "Start Session".');
+        return;
+      }
+      if (!answer) {
+        alert('Please type in your answer response.');
         return;
       }
 
       const start = Date.now();
       displayResponse('Pending...', 'Evaluating response and fetching next question...', 0);
+
+      const computedWordCount = answer.split(/\s+/).filter(Boolean).length;
+      // Mock vocal parameters for simulation telemetry
+      const mockSignals = {
+        responseTime: Math.round((Date.now() - start) / 1000) || 15,
+        latencySeconds: (Date.now() - start) / 1000,
+        wordCount: computedWordCount,
+        wordsPerMinute: 120,
+        fillerCount: Math.round(computedWordCount * 0.05) || 0
+      };
 
       try {
         const res = await fetch(`${baseUrl}/api/interview/answer`, {
@@ -1303,20 +1606,50 @@ Requirements:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             interview_id: interviewId,
-            question_text: "Simulation Question",
-            category: "Technical",
+            question_text: currentQuestionText,
+            category: currentCategory,
             answer_text: answer,
-            signals: {
-              responseTime: 30,
-              latencySeconds: 2.0,
-              wordCount: answer.split(' ').length,
-              wordsPerMinute: 120,
-              fillerCount: 0
-            }
+            signals: mockSignals
           })
         });
         const latency = Date.now() - start;
         const data = await res.json();
+        
+        // Append user response details to current question log
+        if (interviewHistory.length > 0) {
+          const activeItem = interviewHistory[interviewHistory.length - 1];
+          activeItem.answer = answer;
+          activeItem.evaluation = data.evaluation || null;
+          activeItem.latencySec = mockSignals.latencySeconds;
+          activeItem.wordCount = mockSignals.wordCount;
+        }
+
+        if (data.finished) {
+          isInterviewActive = false;
+          currentQuestionText = "";
+          currentCategory = "";
+        } else {
+          currentQuestionText = data.question || "";
+          currentCategory = data.category || "Technical";
+          currentQuestionIndex += 1;
+          
+          // Push next question to history log
+          interviewHistory.push({
+            question: currentQuestionText,
+            category: currentCategory,
+            difficulty: data.difficulty_level || 'Medium',
+            answer: null,
+            evaluation: null,
+            latencySec: 0,
+            wordCount: 0
+          });
+        }
+        
+        // Clear answer text area
+        document.getElementById('int-answer').value = "";
+        
+        // Switch response view to Visual Preview
+        setResponseView('preview');
         displayResponse(res.status, data, latency);
       } catch (err) {
         displayResponse(500, { error: 'Failed to submit response.', details: err.message }, Date.now() - start);

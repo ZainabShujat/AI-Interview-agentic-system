@@ -77,29 +77,50 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
         existing_cache = db.query(models.ResumeCache).filter(models.ResumeCache.raw_text_hash == resume_hash).first()
         
         if existing_cache and existing_cache.parsed_json:
-            # Ensure an associated Resume entity exists for foreign keys / interviews mapping
-            db_resume = db.query(models.Resume).filter(models.Resume.raw_text == raw_text).first()
-            if not db_resume:
-                db_resume = models.Resume(
-                    raw_text=raw_text,
-                    parsed_json=existing_cache.parsed_json
-                )
-                db.add(db_resume)
-                db.commit()
-                db.refresh(db_resume)
-            return {
-                "id": db_resume.id,
-                "filename": file.filename,
-                "parsed": existing_cache.parsed_json,
-                "raw_resume_text": raw_text
-            }
+            cached_name = existing_cache.parsed_json.get("candidate_name")
+            is_valid_cache = True
+            if cached_name:
+                c_lower = cached_name.lower()
+                if any(kw in c_lower for kw in ['psychologist', 'engineer', 'developer', 'trainer', 'intern']):
+                    is_valid_cache = False
+            else:
+                is_valid_cache = False
+                
+            if is_valid_cache:
+                # Ensure an associated Resume entity exists for foreign keys / interviews mapping
+                db_resume = db.query(models.Resume).filter(models.Resume.raw_text == raw_text).first()
+                if not db_resume:
+                    db_resume = models.Resume(
+                        raw_text=raw_text,
+                        parsed_json=existing_cache.parsed_json
+                    )
+                    db.add(db_resume)
+                    db.commit()
+                    db.refresh(db_resume)
+                return {
+                    "id": db_resume.id,
+                    "filename": file.filename,
+                    "parsed": existing_cache.parsed_json,
+                    "raw_resume_text": raw_text
+                }
 
         # 3. Parse text using Gemini Resume Agent (handles local extraction, LLM parsing, and DB caching)
         parsed_data = gemini_service.parse_resume(raw_text)
         
         # 4. Fetch or insert the Resume entity record for relational mapping
         db_resume = db.query(models.Resume).filter(models.Resume.raw_text == raw_text).first()
-        if not db_resume:
+        if db_resume:
+            cached_name = db_resume.parsed_json.get("candidate_name") if db_resume.parsed_json else None
+            is_stale = True
+            if cached_name:
+                c_lower = cached_name.lower()
+                if not any(kw in c_lower for kw in ['psychologist', 'engineer', 'developer', 'trainer', 'intern']):
+                    is_stale = False
+            if is_stale:
+                db_resume.parsed_json = parsed_data
+                db.commit()
+                db.refresh(db_resume)
+        else:
             db_resume = models.Resume(
                 raw_text=raw_text,
                 parsed_json=parsed_data
