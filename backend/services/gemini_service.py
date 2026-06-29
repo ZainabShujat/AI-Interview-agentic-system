@@ -401,6 +401,66 @@ def _clean_resume_text(text: str) -> str:
     return cleaned_text.strip()
 
 # --- 1. Resume Parser Agent (HYBRID - Local Extraction + Shrunk Prompt LLM) ---
+def _parse_resume_local_fallback(raw_text: str, pre_extracted: dict, link_evidence: list, resume_hash: str) -> dict:
+    """Intelligent local resume parsing fallback using regex and hardcoded skills database."""
+    logger.warning("Gemini API call failed or missing. Falling back to local heuristic resume parser.")
+    edu_list = _extract_education(raw_text)
+    grad_years = []
+    for edu in edu_list:
+        year_str = edu.get("year")
+        if year_str:
+            years = [int(y) for y in re.findall(r'\b(20\d{2}|19\d{2})\b', str(year_str))]
+            if years:
+                grad_years.append(max(years))
+    fallback_years = 0.0
+    if grad_years:
+        import datetime
+        fallback_years = float(datetime.datetime.now().year - min(grad_years))
+
+    fallback_data = {
+        **pre_extracted,
+        'estimated_experience_years': fallback_years,
+        'summary': f"Professional with {fallback_years} years of experience.",
+        'career_level': 'Mid-Level' if fallback_years < 5 else 'Senior',
+        'primary_domain': 'Software Engineering',
+        'skills': list(_categorize_skills(raw_text).get('tools', []))[:10],
+        'projects': [],
+        'experience': _extract_experience(raw_text),
+        'education': _extract_education(raw_text),
+        'certifications': _extract_certifications(raw_text),
+        'internships': [],
+        'achievements': [],
+        'languages': [],
+        'domain_experience': [],
+        'top_strengths': [],
+        'potential_concerns': [],
+        'links': [
+            {
+                'url': evidence['url'],
+                'type': 'GitHub' if 'github' in evidence['url'].lower() else 'LinkedIn' if 'linkedin' in evidence['url'].lower() else 'Portfolio',
+                'verified': evidence['status'] == 'fetched',
+                'summary': evidence.get('text_excerpt', '')[:500],
+                'skills_found': [],
+                'projects_found': []
+            }
+            for evidence in link_evidence
+        ]
+    }
+    normalized_data = normalize_resume_parsed(fallback_data)
+    
+    # Save fallback response to DB cache
+    db = SessionLocal()
+    try:
+        db_cache = models.ResumeCache(raw_text_hash=resume_hash, parsed_json=normalized_data)
+        db.add(db_cache)
+        db.commit()
+    except Exception as e:
+        logger.warning(f"Failed to save fallback to ResumeCache: {e}")
+    finally:
+        db.close()
+        
+    return normalized_data
+
 def parse_resume(raw_text: str) -> dict:
     """
     Parses resume using a hybrid approach:
@@ -457,63 +517,7 @@ def parse_resume(raw_text: str) -> dict:
 
     # Step 2: Use Gemini to infer and structure the complex fields
     if not GEMINI_API_KEY:
-        # If API key is missing, build local fallback structure
-        edu_list = _extract_education(raw_text)
-        grad_years = []
-        for edu in edu_list:
-            year_str = edu.get("year")
-            if year_str:
-                years = [int(y) for y in re.findall(r'\b(20\d{2}|19\d{2})\b', str(year_str))]
-                if years:
-                    grad_years.append(max(years))
-        fallback_years = 0.0
-        if grad_years:
-            import datetime
-            fallback_years = float(datetime.datetime.now().year - min(grad_years))
-
-        fallback_data = {
-            **pre_extracted,
-            'estimated_experience_years': fallback_years,
-            'summary': f"Professional with {fallback_years} years of experience.",
-            'career_level': 'Mid-Level' if fallback_years < 5 else 'Senior',
-            'primary_domain': 'Software Engineering',
-            'skills': list(_categorize_skills(raw_text).get('tools', []))[:10],
-            'projects': [],
-            'experience': _extract_experience(raw_text),
-            'education': _extract_education(raw_text),
-            'certifications': _extract_certifications(raw_text),
-            'internships': [],
-            'achievements': [],
-            'languages': [],
-            'domain_experience': [],
-            'top_strengths': [],
-            'potential_concerns': [],
-            'links': [
-                {
-                    'url': evidence['url'],
-                    'type': 'GitHub' if 'github' in evidence['url'].lower() else 'LinkedIn' if 'linkedin' in evidence['url'].lower() else 'Portfolio',
-                    'verified': evidence['status'] == 'fetched',
-                    'summary': evidence.get('text_excerpt', '')[:500],
-                    'skills_found': [],
-                    'projects_found': []
-                }
-                for evidence in link_evidence
-            ]
-        }
-        normalized_data = normalize_resume_parsed(fallback_data)
-        
-        # Save fallback response to DB cache
-        db = SessionLocal()
-        try:
-            db_cache = models.ResumeCache(raw_text_hash=resume_hash, parsed_json=normalized_data)
-            db.add(db_cache)
-            db.commit()
-        except Exception as e:
-            logger.warning(f"Failed to save fallback to ResumeCache: {e}")
-        finally:
-            db.close()
-            
-        return normalized_data
+        return _parse_resume_local_fallback(raw_text, pre_extracted, link_evidence, resume_hash)
 
     # Preprocess text to strip out page numbers, duplicate spaces, and contact info block lines
     cleaned_text = _clean_resume_text(raw_text)
@@ -578,7 +582,8 @@ Return JSON matching exactly this schema:
             
         return normalized_data
     except Exception as e:
-        raise RuntimeError(f"Resume Agent failed while using Gemini API: {e}") from e
+        logger.warning(f"Resume Agent Gemini call failed: {e}. Falling back to local heuristic parser.")
+        return _parse_resume_local_fallback(raw_text, pre_extracted, link_evidence, resume_hash)
 
 def _extract_name(text: str) -> Optional[str]:
     lines = [line.strip() for line in text.split('\n') if line.strip()]
@@ -700,9 +705,93 @@ def _extract_certifications(text: str) -> list:
     return list(set(certs))[:10]
 
 # --- 2. JD Parser Agent ---
+def _parse_jd_heuristics(raw_text: str) -> dict:
+    """Intelligent local JD parser that extracts core requirements using NLP heuristics."""
+    logger.warning("Gemini API call failed or missing. Falling back to local heuristic JD parser.")
+    
+    # 1. Title Extraction
+    title = "Software Engineer"
+    lines = [l.strip() for l in raw_text.split('\n') if l.strip()]
+    for line in lines[:5]:
+        if len(line) < 60 and any(keyword in line.lower() for keyword in ['engineer', 'developer', 'architect', 'manager', 'lead', 'senior', 'junior', 'analyst', 'specialist']):
+            title = line
+            break
+            
+    # 2. Seniority detection
+    seniority = "Mid-level"
+    raw_lower = raw_text.lower()
+    if "senior" in raw_lower or "sr" in raw_lower:
+        seniority = "Senior"
+    elif "junior" in raw_lower or "jr" in raw_lower:
+        seniority = "Junior"
+    elif "lead" in raw_lower or "principal" in raw_lower:
+        seniority = "Lead"
+    elif "director" in raw_lower or "manager" in raw_lower:
+        seniority = "Manager"
+        
+    # 3. Experience requirements extraction
+    exp = "2+ years"
+    exp_match = re.search(r'\b(\d+\s*\+?\s*(?:years|yrs))\b', raw_lower)
+    if exp_match:
+        exp = exp_match.group(1).capitalize()
+        
+    # 4. Industry/Domain detection
+    industry = "Technology"
+    if any(k in raw_lower for k in ["fintech", "payment", "bank", "finance"]):
+        industry = "Fintech"
+    elif any(k in raw_lower for k in ["health", "medical", "clinic", "biotech"]):
+        industry = "Healthcare"
+    elif any(k in raw_lower for k in ["retail", "commerce", "shop"]):
+        industry = "E-Commerce"
+        
+    # 5. Skills extraction
+    required_skills = []
+    preferred_skills = []
+    
+    all_known_skills = PROGRAMMING_LANGUAGES | FRAMEWORKS | DATABASES | CLOUD_PLATFORMS | TOOLS_AND_PLATFORMS
+    detected = []
+    for skill in all_known_skills:
+        # Match using word boundaries
+        if re.search(r'\b' + re.escape(skill) + r'\b', raw_lower):
+            display_name = skill.upper() if skill in ["aws", "sql", "ci/cd", "gcp"] else skill.capitalize()
+            detected.append(display_name)
+            
+    # Divide detected skills into required (first 5) and preferred (others)
+    if detected:
+        required_skills = detected[:6]
+        preferred_skills = detected[6:10]
+    else:
+        required_skills = ["Python", "SQL", "Git"]
+        preferred_skills = ["Docker", "AWS"]
+        
+    # 6. Responsibilities extraction
+    responsibilities = []
+    bullet_lines = [l.strip().lstrip('*-•').strip() for l in raw_text.split('\n') if l.strip().startswith(('*', '-', '•'))]
+    if bullet_lines:
+        responsibilities = bullet_lines[:5]
+    else:
+        responsibilities = [
+            "Write high-quality, maintainable backend code.",
+            "Collaborate with product managers and other engineers.",
+            "Design and optimize relational databases."
+        ]
+        
+    return {
+        "title": title,
+        "required_skills": required_skills,
+        "preferred_skills": preferred_skills,
+        "industry": industry,
+        "seniority": seniority,
+        "experience": exp,
+        "responsibilities": responsibilities,
+        "domain": industry,
+        "leadership_expectations": ["Mentor junior developers" if seniority in ["Senior", "Lead", "Manager"] else "Participate in team sessions"],
+        "communication_expectations": ["Explain technical choices and trade-offs clearly"]
+    }
+
 def parse_jd(raw_text: str) -> dict:
     if not GEMINI_API_KEY:
-        return get_mock_jd_parsed()
+        return _parse_jd_heuristics(raw_text)
         
     prompt = f"""You are an expert recruiter parsing a Job Description. Extract:
 - title
@@ -735,7 +824,8 @@ Return JSON matching exactly this schema:
     try:
         return call_gemini_json(prompt)
     except Exception as e:
-        raise RuntimeError(f"JD Agent failed while using Gemini API: {e}") from e
+        logger.warning(f"JD Agent Gemini call failed: {e}. Falling back to local heuristic JD parser.")
+        return _parse_jd_heuristics(raw_text)
 
 # --- 3. Match Agent ---
 def match_resume_and_jd(resume_parsed: dict, jd_parsed: dict) -> dict:
@@ -898,40 +988,44 @@ def generate_assessment_blueprint(jd_parsed: dict, match_analysis: dict) -> dict
         "role": jd_parsed.get("title") or jd_parsed.get("role") or "Target Role"
     }
 # --- 4. Interview Planner Agent ---
+def _plan_interview_roadmap_local(resume_parsed: dict, jd_parsed: dict, match_analysis: dict) -> dict:
+    """Fallback programmatic planner that outputs question counts dynamically."""
+    seniority = jd_parsed.get("seniority", "Mid")
+    role = jd_parsed.get("title", "Software Engineer")
+    industry = jd_parsed.get("industry", "Technology")
+    gaps = match_analysis.get("gaps", [])
+    
+    roadmap = {"Technical": 1, "Scenario": 1, "Behavioral": 1}
+    
+    # Adjust programmatically based on gaps
+    has_behavioral_gap = False
+    for gap in gaps:
+        desc = gap.get("description", "").lower()
+        if any(k in desc for k in ["compliance", "soc2", "audit", "leadership", "mentoring", "team"]):
+            has_behavioral_gap = True
+            
+    if seniority in ["Senior", "Lead", "Director"]:
+        roadmap["Scenario"] = 2
+        if has_behavioral_gap:
+            roadmap["Leadership"] = 2
+        else:
+            roadmap["Technical"] = 2
+    elif seniority in ["Junior", "Intern"]:
+        # Juniors focus heavily on technical fundamentals
+        roadmap["Technical"] = 3
+        roadmap["Scenario"] = 1
+        roadmap["Behavioral"] = 1
+    else:
+        if has_behavioral_gap:
+            roadmap["Behavioral"] = 2
+        else:
+            roadmap["Technical"] = 2
+            
+    return roadmap
+
 def plan_interview_roadmap(resume_parsed: dict, jd_parsed: dict, match_analysis: dict) -> dict:
     if not GEMINI_API_KEY:
-        seniority = jd_parsed.get("seniority", "Mid")
-        role = jd_parsed.get("title", "Software Engineer")
-        industry = jd_parsed.get("industry", "Technology")
-        gaps = match_analysis.get("gaps", [])
-        
-        roadmap = {"Technical": 1, "Scenario": 1, "Behavioral": 1}
-        
-        # Adjust programmatically based on gaps
-        has_behavioral_gap = False
-        for gap in gaps:
-            desc = gap.get("description", "").lower()
-            if any(k in desc for k in ["compliance", "soc2", "audit", "leadership", "mentoring", "team"]):
-                has_behavioral_gap = True
-                
-        if seniority in ["Senior", "Lead", "Director"]:
-            roadmap["Scenario"] = 2
-            if has_behavioral_gap:
-                roadmap["Leadership"] = 2
-            else:
-                roadmap["Technical"] = 2
-        elif seniority in ["Junior", "Intern"]:
-            # Juniors focus heavily on technical fundamentals
-            roadmap["Technical"] = 3
-            roadmap["Scenario"] = 1
-            roadmap["Behavioral"] = 1
-        else:
-            if has_behavioral_gap:
-                roadmap["Behavioral"] = 2
-            else:
-                roadmap["Technical"] = 2
-                
-        return roadmap
+        return _plan_interview_roadmap_local(resume_parsed, jd_parsed, match_analysis)
         
     prompt = f"""
     You are the Interview Planner Agent. Based on the candidate's parsed Resume, target Job Description (JD), and match analysis (including gaps, seniority, role title, and industry), formulate a custom question distribution roadmap.
@@ -966,7 +1060,8 @@ def plan_interview_roadmap(resume_parsed: dict, jd_parsed: dict, match_analysis:
     try:
         return call_gemini_json(prompt)
     except Exception as e:
-        raise RuntimeError(f"Interview Planner Agent failed while using Gemini API: {e}") from e
+        logger.warning(f"Interview Planner Agent Gemini call failed: {e}. Falling back to programmatic roadmap planner.")
+        return _plan_interview_roadmap_local(resume_parsed, jd_parsed, match_analysis)
 
 # --- 5. Interview Agent (Adaptive Question Formulation) ---
 def generate_question(resume: dict, jd: dict, history: list, category: str, difficulty: str, memory: dict = None) -> str:
@@ -1013,6 +1108,8 @@ def generate_question(resume: dict, jd: dict, history: list, category: str, diff
     
     Guidelines:
     - Create a realistic, high-end professional interview query.
+    - KEEP the question extremely brief, direct, and conversational (maximum 1 to 2 sentences, under 40 words total).
+    - Do NOT bundle multiple sub-questions, options, or preambles. Focus on asking exactly one clear thing at a time.
     - Do NOT mention "AI", "Agent", or structural instructions. Make it sound like a human peer interviewer.
     - Return ONLY the question text in JSON format.
     
@@ -1028,7 +1125,118 @@ def generate_question(resume: dict, jd: dict, history: list, category: str, diff
             raise RuntimeError("Gemini response did not include a question field.")
         return question
     except Exception as e:
-        raise RuntimeError(f"Question Generator Agent failed while using Gemini API: {e}") from e
+        logger.warning(f"Question Generator Agent Gemini call failed: {e}. Falling back to mock question generator.")
+        return get_mock_question(category, difficulty, offset=len(history) if history else 0)
+
+def judge_answer_heuristics(question: str, answer: str, signals: dict) -> dict:
+    """Fallback rule-based Judge to handle API rate-limit/quota errors dynamically."""
+    logger.warning("Gemini API call failed or quota exceeded. Falling back to heuristic scoring model.")
+    
+    # 1. Base Scores
+    accuracy = 70
+    depth = 65
+    communication = 70
+    practicality = 65
+    problem_solving = 65
+    business_thinking = 65
+    
+    words = answer.split()
+    word_count = len(words)
+    
+    # Heuristics based on answer details
+    # 2. Length-based upgrades
+    if word_count > 150:
+        communication += 10
+        depth += 10
+    elif word_count > 80:
+        communication += 5
+        depth += 5
+    elif word_count < 15:
+        accuracy -= 20
+        depth -= 25
+        communication -= 15
+        
+    # 3. Context keywords indicators
+    ans_lower = answer.lower()
+    
+    # Analytical logic
+    if any(k in ans_lower for k in ["because", "since", "why", "therefore", "consequently"]):
+        problem_solving += 10
+        
+    # Technical depth indicators
+    tech_keywords = ["trade-off", "performance", "bottleneck", "scaling", "cache", "latency", "index", "database", "concurrency", "architecture", "design pattern", "refactor", "complexity", "big o"]
+    matched_tech = sum(1 for kw in tech_keywords if kw in ans_lower)
+    depth += min(20, matched_tech * 4)
+    
+    # Practicality / execution indicators
+    practical_keywords = ["implement", "testing", "deploy", "ci/cd", "docker", "kubernetes", "script", "migration", "production", "monitoring", "git", "log", "metrics"]
+    matched_prac = sum(1 for kw in practical_keywords if kw in ans_lower)
+    practicality += min(20, matched_prac * 4)
+    
+    # Business / Product alignment indicators
+    business_keywords = ["cost", "user experience", "ux", "revenue", "priority", "roi", "sla", "business requirement", "client", "stakeholder", "budget", "deliverable"]
+    matched_biz = sum(1 for kw in business_keywords if kw in ans_lower)
+    business_thinking += min(20, matched_biz * 4)
+    
+    # STAR structure detection
+    situation_found = any(k in ans_lower for k in ["situation", "context", "background", "project", "when i was", "at my last"]) or word_count > 40
+    task_found = any(k in ans_lower for k in ["task", "goal", "objective", "requirement", "needed to", "assigned to"]) or word_count > 60
+    action_found = any(k in ans_lower for k in ["action", "did", "implemented", "solved", "wrote", "built", "engineered"]) or word_count > 80
+    result_found = any(k in ans_lower for k in ["result", "outcome", "consequently", "reduced", "improved", "saved", "percent", "%", "finally"]) or word_count > 100
+    
+    # Communication adjustments from signals
+    latency = signals.get("latencySeconds") or signals.get("responseTime") or 0.0
+    filler_count = signals.get("fillerCount") or 0
+    
+    if latency > 120:
+        communication -= 10 # Extremely slow pacing
+    elif 15 <= latency <= 50:
+        communication += 10 # Ideal conversational pacing
+        
+    if filler_count > 8:
+        communication -= 8
+        
+    # Clamp scores to 0-100 range
+    accuracy = max(10, min(98, accuracy))
+    depth = max(10, min(98, depth))
+    communication = max(10, min(98, communication))
+    practicality = max(10, min(98, practicality))
+    problem_solving = max(10, min(98, problem_solving))
+    business_thinking = max(10, min(98, business_thinking))
+    
+    # Feedback building
+    feedback_points = []
+    if depth > 80:
+        feedback_points.append("Excellent technical depth with detailed architectural references.")
+    elif depth < 50:
+        feedback_points.append("Try to provide deeper technical justifications and discuss trade-offs.")
+        
+    if not result_found:
+        feedback_points.append("Include specific metric outcomes (STAR Result element) to strengthen your response.")
+    else:
+        feedback_points.append("Good usage of outcomes and result metrics to anchor the answer.")
+        
+    if filler_count > 5:
+        filler_feedback = f"Slightly high frequency of filler words ({filler_count} pauses detected). Focus on breathing and pacing."
+    else:
+        filler_feedback = "Strong verbal pacing and clear delivery with low filler counts."
+        
+    return {
+        "accuracy": accuracy,
+        "depth": depth,
+        "communication": communication,
+        "practicality": practicality,
+        "problemSolving": problem_solving,
+        "businessThinking": business_thinking,
+        "starFramework": {
+            "situation": situation_found,
+            "task": task_found,
+            "action": action_found,
+            "result": result_found
+        },
+        "feedback": " ".join(feedback_points) or "Reasonable response structure. Keep discussing practical trade-offs.",
+        "fillerWordFeedback": filler_feedback
+    }
 
 # --- 6. Judge Agent ---
 def judge_answer(question: str, answer: str, signals: dict) -> dict:
@@ -1081,7 +1289,8 @@ def judge_answer(question: str, answer: str, signals: dict) -> dict:
     try:
         return call_gemini_json(prompt)
     except Exception as e:
-        raise RuntimeError(f"Judge Agent failed while using Gemini API: {e}") from e
+        logger.warning(f"Judge Agent Gemini call failed: {e}. Degrading gracefully to heuristic rule-based evaluator.")
+        return judge_answer_heuristics(question, answer, signals)
 
 # --- 7. Memory Agent ---
 def update_memory(current_memory: dict, question: str, answer: str, evaluation: dict, jd_parsed: dict = None) -> dict:
@@ -1483,7 +1692,11 @@ def generate_final_report(all_qa: list, memory: dict) -> dict:
         report_json["all_qa"] = all_qa
         return report_json
     except Exception as e:
-        raise RuntimeError(f"Report Agent failed while using Gemini API: {e}") from e
+        logger.warning(f"Report Agent Gemini call failed: {e}. Falling back to mock final report.")
+        report_json = get_mock_report_final(all_qa, memory)
+        report_json["communicationProfile"] = compile_communication_profile(all_qa)
+        report_json["all_qa"] = all_qa
+        return report_json
 
 # --- MOCK FALLBACKS ---
 
@@ -1894,4 +2107,5 @@ def generate_career_roadmap(resume: dict, target_role: Optional[str] = None, tar
     try:
         return call_gemini_json(prompt)
     except Exception as e:
-        raise RuntimeError(f"Career Intelligence Agent failed while using Gemini API: {e}") from e
+        logger.warning(f"Career Intelligence Agent Gemini call failed: {e}. Falling back to mock career roadmap.")
+        return get_mock_career_roadmap(resume, target_role or "", target_company or "", target_jd or {})
