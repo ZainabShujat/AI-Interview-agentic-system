@@ -62,7 +62,7 @@ const platformSteps = [
 export default function Landing() {
   return (
     <div className="relative min-h-screen font-sans" style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}>
-      <section className="max-w-6xl mx-auto px-6 pt-24 pb-16 md:pt-32 md:pb-24">
+      <section className="max-w-6xl mx-auto px-6 pt-2 pb-8 md:pt-4 md:pb-12">
         <motion.div initial="hidden" animate="visible" variants={fadeInUp} className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           <div className="lg:col-span-7 space-y-8">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-blue-500/20 bg-blue-600/10 text-blue-400 text-xs font-bold uppercase tracking-widest">

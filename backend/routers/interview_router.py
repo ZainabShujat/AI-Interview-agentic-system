@@ -304,10 +304,10 @@ async def list_reports(jd_id: Optional[str] = None, db: Session = Depends(get_db
         resume = db.query(models.Resume).filter(models.Resume.id == interview.resume_id).first()
         jd = db.query(models.JobDescription).filter(models.JobDescription.id == interview.jd_id).first()
         
-        parsed_resume = resume.parsed_json if resume else {}
-        parsed_jd = jd.parsed_json if jd else {}
+        parsed_resume = resume.parsed_json if resume and resume.parsed_json else {}
+        parsed_jd = jd.parsed_json if jd and jd.parsed_json else {}
         
-        report_data = report.report_json if report else {}
+        report_data = report.report_json if report and report.report_json else {}
         overall_score = report_data.get("overallScore", 0)
         recommendation = report_data.get("recommendation", "Pending")
         
@@ -327,7 +327,13 @@ async def list_reports(jd_id: Optional[str] = None, db: Session = Depends(get_db
             "score": overall_score,
             "recommendation": recommendation,
             "status": "Completed" if interview.status == "completed" else "In Progress",
-            "date": interview.created_at.strftime("%Y-%m-%d") if interview.created_at else None
+            "date": (
+                interview.created_at.strftime("%Y-%m-%d") 
+                if hasattr(interview.created_at, "strftime") 
+                else str(interview.created_at)[:10] 
+                if interview.created_at 
+                else None
+            )
         })
     return results
 

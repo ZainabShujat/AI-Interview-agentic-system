@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Agent Sandbox & Playground</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Outfit Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0b0f19;
+      color: #f3f4f6;
+    }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .glow-indigo:hover {
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+    }
+    .glow-teal:hover {
+      box-shadow: 0 0 20px rgba(45, 212, 191, 0.2);
+    }
+    /* Custom scrollbar for raw JSON views */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.3);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+  </style>
+</head>
+<body class="min-h-screen py-10 px-5 md:px-12 flex flex-col justify-between">
+
+  <!-- Header Section -->
+  <header class="max-w-7xl w-full mx-auto mb-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-slate-800 pb-8">
+    <div>
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/20 bg-indigo-500/10 text-indigo-400 text-xs font-semibold tracking-wider uppercase mb-3">
+        <span>AI Agent Sandbox</span>
+      </div>
+      <h1 class="text-4xl font-extrabold tracking-tight text-white font-sans">
+        Agent Playground
+      </h1>
+      <p class="text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
+        Test and validate each of HireIntel's modular backend AI agents individually in a Postman-style split console. Paste requests, execute tests, and inspect raw responses.
+      </p>
+    </div>
+
+    <!-- API Base Endpoint Configurator -->
+    <div class="glass-card p-5 rounded-xl flex flex-col gap-3.5 w-full md:w-auto">
+      <span class="text-[10px] uppercase tracking-widest font-bold text-slate-400 block border-b border-slate-800 pb-1.5">API Server Endpoint Selector</span>
+      
+      <div class="flex flex-wrap gap-4 text-xs font-semibold">
+        <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+          <input type="radio" name="endpoint-select" value="prod" checked onchange="updateBaseUrlSelect()" class="text-indigo-600 focus:ring-0" />
+          <span>Production Staging</span>
+        </label>
+        
+        <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+          <input type="radio" name="endpoint-select" value="local" onchange="updateBaseUrlSelect()" class="text-indigo-600 focus:ring-0" />
+          <span>Local (localhost:8000)</span>
+        </label>
+        
+        <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+          <input type="radio" name="endpoint-select" value="custom" onchange="updateBaseUrlSelect()" class="text-indigo-600 focus:ring-0" />
+          <span>Custom URL</span>
+        </label>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <input 
+          id="api-base-url" 
+          type="text" 
+          value="https://hireintel-bv0v.onrender.com"
+          placeholder="e.g. https://hireintel-bv0v.onrender.com" 
+          class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-indigo-300 focus:outline-none focus:border-indigo-500 font-mono w-full sm:w-80"
+          readonly
+        />
+        <button 
+          onclick="pingAllAgents()" 
+          class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-lg transition-all"
+        >
+          Check Health
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Split Console Area -->
+  <main class="max-w-7xl w-full mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-start flex-grow">
+    
+    <!-- Left Navigation Tabs Sidebar -->
+    <div class="md:col-span-3 space-y-4">
+      <nav class="flex flex-col gap-2">
+        <button 
+          id="tab-btn-resume"
+          onclick="switchTab('resume')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">Resume Intelligence</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Parse PDF resumes & structure candidate profiles.</span>
+        </button>
+
+        <button 
+          id="tab-btn-jd"
+          onclick="switchTab('jd')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">JD Intelligence</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Extract job roles into structured blueprints.</span>
+        </button>
+
+        <button 
+          id="tab-btn-match"
+          onclick="switchTab('match')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">Readiness Match</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Compute fit between raw resume & JD JSON schemas.</span>
+        </button>
+
+        <button 
+          id="tab-btn-interview"
+          onclick="switchTab('interview')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">Interview</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Simulate adaptive questions & voice tracking queues.</span>
+        </button>
+
+        <button 
+          id="tab-btn-judge"
+          onclick="switchTab('judge')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">Judge</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Evaluate transcript answers against category rubrics.</span>
+        </button>
+
+        <button 
+          id="tab-btn-roadmap"
+          onclick="switchTab('roadmap')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">Career Intelligence</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Map personalized roadmap targets & success paths.</span>
+        </button>
+
+        <button 
+          id="tab-btn-report"
+          onclick="switchTab('report')" 
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+        >
+          <span class="text-sm font-bold text-white block">Report</span>
+          <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Generate final evaluation insights & readiness metrics.</span>
+        </button>
+      </nav>
+
+      <!-- Live API Health Panel -->
+      <div class="glass-card p-4 rounded-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <span class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Agent Health & Latency</span>
+          <button onclick="pingAllAgents()" class="text-[9px] hover:text-indigo-400 font-bold uppercase transition-colors">Refresh</button>
+        </div>
+        <div class="space-y-2.5 text-[11px]" id="health-check-list">
+          <div id="health-resume" class="flex justify-between items-center text-slate-400">Resume Agent: <span class="text-slate-600 font-mono">-- ms</span></div>
+          <div id="health-jd" class="flex justify-between items-center text-slate-400">JD Agent: <span class="text-slate-600 font-mono">-- ms</span></div>
+          <div id="health-match" class="flex justify-between items-center text-slate-400">Match Agent: <span class="text-slate-600 font-mono">-- ms</span></div>
+          <div id="health-interview" class="flex justify-between items-center text-slate-400">Interview Agent: <span class="text-slate-600 font-mono">-- ms</span></div>
+          <div id="health-judge" class="flex justify-between items-center text-slate-400">Judge Agent: <span class="text-slate-600 font-mono">-- ms</span></div>
+          <div id="health-roadmap" class="flex justify-between items-center text-slate-400">Career Agent: <span class="text-slate-600 font-mono">-- ms</span></div>
+          <div id="health-report" class="flex justify-between items-center text-slate-400">Report Agent: <span class="text-slate-600 font-mono">-- ms</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Split Panel: Active Playground console -->
+    <section class="md:col-span-9 grid grid-cols-1 lg:grid-cols-2 gap-6 h-[760px] items-stretch">
+      
+      <!-- Left Box: Request Panel -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between border-slate-800/80 glow-indigo transition-all">
+        <div class="flex flex-col h-full space-y-4 border-slate-800">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <span class="text-[10px] uppercase font-bold tracking-widest text-indigo-400 block">Input Console</span>
+              <h2 class="text-lg font-bold text-white font-sans mt-0.5" id="active-tab-title">Resume Intelligence</h2>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded border border-indigo-500/20 text-indigo-400 bg-indigo-600/10 font-bold" id="active-endpoint">
+              POST /api/resume
+            </span>
+          </div>
+
+          <!-- Dynamic Panel Content Container -->
+          <div class="flex-grow overflow-y-auto pr-1" id="request-panel-inputs">
+            <!-- Active tab inputs go here -->
+          </div>
+        </div>
+
+        <div class="border-t border-slate-800 pt-4 mt-4 flex items-center justify-between">
+          <span class="text-[11px] text-slate-500" id="req-method-desc">Exposes raw JSON parameters</span>
+          <button 
+            id="run-btn"
+            onclick="runActiveAgentTest()"
+            class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white rounded-lg shadow-lg hover:shadow-indigo-500/10 flex items-center gap-2 transition-all"
+          >
+            <span>Run Playground Test</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Box: Response Panel -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between border-slate-800/80 glow-teal transition-all">
+        <div class="flex flex-col h-full space-y-4 min-h-0">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <span class="text-[10px] uppercase font-bold tracking-widest text-teal-400 block">Output Response</span>
+              <div class="flex items-center gap-2 mt-0.5">
+                <button id="btn-show-json" onclick="setResponseView('json')" class="text-xs font-bold text-white border-b-2 border-teal-400 pb-0.5 focus:outline-none">JSON payload</button>
+                <span class="text-slate-600 text-xs">|</span>
+                <button id="btn-show-preview" onclick="setResponseView('preview')" class="text-xs font-bold text-slate-400 hover:text-white pb-0.5 focus:outline-none">Visual Preview</button>
+              </div>
+            </div>
+            <span id="response-code" class="text-[10px] px-2 py-0.5 rounded border border-slate-800 text-slate-400 bg-slate-900 font-bold">
+              Idle
+            </span>
+          </div>
+
+          <!-- Dynamic Output Views -->
+          <div class="flex-grow flex flex-col min-h-0">
+            <!-- JSON text view -->
+            <textarea 
+              id="raw-response" 
+              readonly 
+              class="w-full flex-grow bg-slate-950/80 border border-slate-900 rounded-xl p-4 text-[11px] text-teal-400 font-mono focus:outline-none resize-none leading-relaxed"
+              placeholder="Click 'Run Playground Test' to see the agent response..."
+            ></textarea>
+            
+            <!-- Visual HTML view (initially hidden) -->
+            <div 
+              id="visual-preview-container" 
+              class="hidden w-full flex-grow bg-slate-950/80 border border-slate-900 rounded-xl p-4 overflow-y-auto leading-relaxed text-slate-300"
+            >
+              <div class="text-center py-10 text-xs text-slate-500">No active parsed data to visualize. Execute a playground test first.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-800 pt-4 mt-4 flex flex-col gap-3">
+          <div class="flex items-center justify-between text-[11px] text-slate-500">
+            <span id="api-latency">Time: -- ms</span>
+            <div class="flex gap-4">
+              <button onclick="copyResponse()" class="hover:text-teal-400 font-bold uppercase transition-colors">Copy JSON</button>
+              <button onclick="copyCurl()" class="hover:text-teal-400 font-bold uppercase transition-colors">Copy cURL</button>
+            </div>
+          </div>
+          
+          <button 
+            onclick="exportResponse()" 
+            class="w-full py-2 bg-slate-900 border border-slate-800 text-[10px] font-bold text-slate-300 hover:text-white uppercase tracking-wider rounded-lg transition-all"
+          >
+            Export Response (.json)
+          </button>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Footer Block -->
+  <footer class="max-w-7xl w-full mx-auto mt-10 border-t border-slate-900 pt-6 text-center text-[11px] text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <span>Agent Playground v1.0.0 • Modular Platform Sandbox</span>
+    <div class="flex gap-4">
+      <a href="/recruiter" class="hover:underline">Recruiter OS</a>
+      <a href="/student" class="hover:underline">Student Path</a>
+    </div>
+  </footer>
+
+  <!-- Playground Scripts -->
+  <script>
+    let activeTabId = 'resume';
+    let currentResponseView = 'json'; // 'json' or 'preview'
+    let lastFetchedResponse = null;
+
+    // Templates for various tabs
+    const templates = {
+      resume: ``, // PDF file upload
+      jd: {
+        text: `Role: Senior Frontend Developer
+Location: San Francisco, CA
+Experience: 5+ years
+
+Requirements:
+- Strong experience in React, TypeScript, and state management (Zustand/Redux).
+- Experience with Next.js, Webpack, and Tailwind CSS.
+- Familiarity with CI/CD pipelines, Docker, and AWS.`
+      },
+      match: {
+        resume_json: {
+          candidate_name: "Aarav Sharma",
+          email: "aarav.sharma@email.com",
+          primary_domain: "Frontend Engineering",
+          estimated_experience_years: 6,
+          skills: ["React", "TypeScript", "Tailwind CSS", "Zustand", "HTML5", "CSS3", "Webpack"],
+          experience: [
+            {
+              title: "Senior React Engineer",
+              company: "TechSolutions Inc.",
+              duration: "2021 - Present",
+              responsibilities: ["Lead frontend migration to React 18 & TS", "Optimized Webpack bundling reducing bundle sizes by 30%"]
+            }
+          ]
+        },
+        jd_json: {
+          title: "Senior Frontend Developer",
+          required_skills: ["React", "TypeScript", "Next.js", "Zustand", "Tailwind CSS", "Webpack"],
+          preferred_skills: ["Docker", "AWS", "CI/CD"],
+          seniority: "Senior",
+          experience: "5+ years",
+          industry: "Tech"
+        }
+      },
+      interview: {
+        resume_id: "",
+        jd_id: ""
+      },
+      judge: {
+        question: "How do you optimize render loops in React when rendering long tabular structures?",
+        answer: "I would implement virtualization using react-window or react-virtualized. This renders only the elements visible in the viewport instead of mounting thousands of rows. Additionally, I would memoize list items with React.memo and use useCallback on handlers to prevent redundant updates.",
+        signals: {
+          responseTime: 45,
+          latencySeconds: 1.8,
+          wordCount: 42,
+          wordsPerMinute: 110,
+          fillerCount: 1
+        }
+      },
+      report: {
+        all_qa: [
+          {
+            category: "Technical",
+            question: "How do you optimize render loops in React?",
+            answer: "Virtualization using react-window, combined with React.memo wrapper components.",
+            evaluation: {
+              accuracy: 90,
+              depth: 85,
+              communication: 90,
+              problemSolving: 90,
+              starFramework: { situation: true, task: true, action: true, result: false }
+            }
+          }
+        ],
+        memory: {
+          demonstrated_skills: ["React", "Virtualization"],
+          weak_skills: [],
+          topics_covered: ["Render Optimization"],
+          confidence_by_skill: { "React": 90 },
+          needs_followup: false,
+          followup_count: 0
+        }
+      },
+      roadmap: {
+        resume: {
+          candidate_name: "Aarav Sharma",
+          email: "aarav.sharma@email.com",
+          primary_domain: "Frontend Engineering",
+          estimated_experience_years: 6,
+          skills: ["React", "TypeScript", "Tailwind CSS", "Zustand", "HTML5", "CSS3", "Webpack"],
+          experience: [
+            {
+              title: "Senior React Engineer",
+              company: "TechSolutions Inc.",
+              duration: "2021 - Present",
+              responsibilities: ["Lead frontend migration to React 18 & TS", "Optimized Webpack bundling reducing bundle sizes by 30%"]
+            }
+          ]
+        },
+        target_role: "Cloud Native Engineer",
+        target_company: "Google",
+        target_jd: {
+          title: "Senior DevOps / Cloud Native Engineer",
+          required_skills: ["Docker", "Kubernetes", "CI/CD", "AWS", "Terraform", "Linux"],
+          preferred_skills: ["Go", "Prometheus", "Service Mesh"],
+          seniority: "Senior"
+        }
+      }
+    };
+
+    // Render Request Fields according to Active Tab
+    function renderRequestInputs() {
+      const container = document.getElementById('request-panel-inputs');
+      let html = '';
+
+      if (activeTabId === 'resume') {
+        html = `
+          <div class="space-y-4">
+            <p class="text-xs text-slate-400">Select a candidate resume PDF. The Resume Agent will read the binary file, strip contact formats, clean whitespace, and extract the structured profile.</p>
+            <div class="border border-dashed border-slate-800 rounded-xl p-8 text-center bg-slate-950/40">
+              <input type="file" id="resume-file" class="hidden" accept=".pdf" onchange="updateResumeFileName()"/>
+              <label for="resume-file" class="cursor-pointer flex flex-col items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-indigo-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <span id="file-name" class="text-xs font-bold text-white">Upload Resume PDF</span>
+                <span class="text-[10px] text-slate-500 mt-1">Binary PDF Upload</span>
+              </label>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-[10px] uppercase font-bold text-slate-500">Endpoint API Route</label>
+              <span class="text-xs font-mono text-indigo-300">POST /api/resume</span>
+            </div>
+          </div>
+        `;
+      } else if (activeTabId === 'jd') {
+        html = `
+          <div class="space-y-4">
+            <p class="text-xs text-slate-400">Paste job description text. The JD Intelligence Agent extracts structured role requirements into an editable blueprint JSON schema.</p>
+            <div class="flex flex-col gap-1">
+              <label class="text-[10px] uppercase font-bold text-slate-500">Raw Job Description Text</label>
+              <textarea id="jd-text" class="w-full h-80 bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-xs font-mono focus:outline-none focus:border-indigo-500 leading-relaxed text-slate-300 resize-none">${templates.jd.text}</textarea>
+            </div>
+          </div>
+        `;
+      } else if (activeTabId === 'match') {
+        html = `
+          <div class="space-y-4 h-full flex flex-col">
+            <p class="text-xs text-slate-400">Compute matching and gap alignment dynamically. The default mode queries stored documents from the database by ID.</p>
+            
+            <div class="flex items-center gap-2 py-1">
+              <input type="checkbox" id="match-raw-mode" onchange="toggleMatchRawMode()" class="h-3 w-3 accent-indigo-500 rounded border-slate-700 bg-slate-900" />
+              <label for="match-raw-mode" class="text-[10px] font-bold text-slate-400 uppercase cursor-pointer select-none">Developer Tools: Direct JSON Schema Match</label>
+            </div>
+
+            <!-- Default: ID Inputs -->
+            <div id="match-id-inputs" class="space-y-3">
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Resume Database ID</label>
+                <input id="match-resume-id" type="text" placeholder="Copy from Resume Intelligence output" value="${lastResumeDbId}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-indigo-300 focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Job Description ID</label>
+                <input id="match-jd-id" type="text" placeholder="Copy from JD Intelligence output" value="${lastJdDbId}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-indigo-300 focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Endpoint API Route</label>
+                <span class="text-xs font-mono text-indigo-300">POST /api/match</span>
+              </div>
+            </div>
+
+            <!-- Advanced: JSON textareas -->
+            <div id="match-json-inputs" class="hidden space-y-3 flex-grow min-h-0">
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Resume JSON</label>
+                <textarea id="match-resume-json" class="w-full h-[130px] bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[10px] font-mono focus:outline-none focus:border-indigo-500 text-indigo-300 resize-none leading-relaxed">${JSON.stringify(templates.match.resume_json, null, 2)}</textarea>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">JD JSON</label>
+                <textarea id="match-jd-json" class="w-full h-[130px] bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[10px] font-mono focus:outline-none focus:border-indigo-500 text-indigo-300 resize-none leading-relaxed">${JSON.stringify(templates.match.jd_json, null, 2)}</textarea>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Endpoint API Route</label>
+                <span class="text-xs font-mono text-indigo-300">POST /api/match/raw</span>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (activeTabId === 'interview') {
+        html = `
+          <div class="space-y-4">
+            <p class="text-xs text-slate-400">Start an interview session dynamically from a parsed Resume record ID and target Job Description ID.</p>
+            <div class="flex flex-col gap-3">
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Resume Database ID</label>
+                <input id="int-resume-id" type="text" placeholder="Copy from Resume Intelligence output" value="${lastResumeDbId}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-indigo-300 focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Job Description ID</label>
+                <input id="int-jd-id" type="text" placeholder="Copy from JD Intelligence output" value="${lastJdDbId}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-indigo-300 focus:outline-none focus:border-indigo-500" />
+              </div>
+            </div>
+            <div class="border-t border-slate-800/40 pt-3 mt-3">
+              <span class="text-[10px] uppercase font-bold text-slate-500 block mb-2">Simulate Active Questions (After Start)</span>
+              <div class="space-y-2">
+                <input id="int-interview-id" type="text" placeholder="Interview Session ID" class="w-full bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-400" />
+                <textarea id="int-answer" placeholder="Type your answer to submit" class="w-full h-24 bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-xs font-sans text-slate-300 focus:outline-none"></textarea>
+                <div class="flex gap-2">
+                  <button onclick="startInterviewSession()" class="flex-grow py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 text-xs font-bold rounded-lg border border-indigo-500/20 transition-all">
+                    Start Session
+                  </button>
+                  <button onclick="submitInterviewAnswer()" class="flex-grow py-2 bg-teal-600/20 hover:bg-teal-600/30 text-teal-400 text-xs font-bold rounded-lg border border-teal-500/20 transition-all">
+                    Submit Answer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (activeTabId === 'judge') {
+        html = `
+          <div class="space-y-4">
+            <p class="text-xs text-slate-400">Expose and evaluate the Judge Agent in isolation. Provide the question, answer, and telemetry signals to get evaluation metrics.</p>
+            <div class="flex flex-col gap-3">
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Question Text</label>
+                <input id="judge-question" type="text" value="${templates.judge.question}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-sans text-slate-300 focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Candidate Answer</label>
+                <textarea id="judge-answer" class="w-full h-32 bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-xs font-sans text-slate-300 focus:outline-none focus:border-indigo-500 resize-none leading-relaxed">${templates.judge.answer}</textarea>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Telemetry Signals JSON</label>
+                <textarea id="judge-signals" class="w-full h-24 bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-xs font-mono text-indigo-300 focus:outline-none focus:border-indigo-500 resize-none leading-relaxed">${JSON.stringify(templates.judge.signals, null, 2)}</textarea>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (activeTabId === 'roadmap') {
+        // Pre-populate parsed Resume JSON and JD JSON from last actions if available
+        let rJson = templates.roadmap.resume;
+        if (lastFetchedResponse && activeTabId === 'roadmap' && lastFetchedResponse.candidate_name) {
+          rJson = lastFetchedResponse;
+        }
+        let jdJson = templates.roadmap.target_jd;
+        
+        html = `
+          <div class="space-y-4 h-full flex flex-col">
+            <p class="text-xs text-slate-400">Expose and test the Career Intelligence Agent. Feed in direct candidate resume profiles and goal targets (desired role, target company, or job description details) to compile personalized weekly study milestones and checklists.</p>
+            <div class="space-y-3 flex-grow overflow-y-auto pr-1">
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Candidate Resume JSON</label>
+                <textarea id="roadmap-resume-json" class="w-full h-36 bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[11px] font-mono focus:outline-none focus:border-indigo-500 text-indigo-300 resize-none leading-relaxed">${JSON.stringify(rJson, null, 2)}</textarea>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] uppercase font-bold text-slate-500">Desired Role</label>
+                  <input id="roadmap-role" type="text" value="${templates.roadmap.target_role}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-sans text-slate-300 focus:outline-none" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="text-[10px] uppercase font-bold text-slate-500">Target Company</label>
+                  <input id="roadmap-company" type="text" value="${templates.roadmap.target_company}" class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2 text-xs font-sans text-slate-300 focus:outline-none" />
+                </div>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Target JD JSON (Optional)</label>
+                <textarea id="roadmap-jd-json" class="w-full h-36 bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[11px] font-mono focus:outline-none focus:border-indigo-500 text-indigo-300 resize-none leading-relaxed">${JSON.stringify(jdJson, null, 2)}</textarea>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (activeTabId === 'report') {
+        html = `
+          <div class="space-y-4 h-full flex flex-col">
+            <p class="text-xs text-slate-400">Expose and evaluate the Report Agent. Compile and structure final evaluation scores, overall recommendations, and strengths/gaps.</p>
+            <div class="grid grid-cols-1 gap-3 flex-grow min-h-0">
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">All QA History List</label>
+                <textarea id="report-qa-json" class="w-full h-[180px] bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[11px] font-mono focus:outline-none focus:border-indigo-500 text-indigo-300 resize-none leading-relaxed">${JSON.stringify(templates.report.all_qa, null, 2)}</textarea>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-[10px] uppercase font-bold text-slate-500">Evaluation Memory JSON</label>
+                <textarea id="report-memory-json" class="w-full h-[180px] bg-slate-950/80 border border-slate-800 rounded-lg p-3 text-[11px] font-mono focus:outline-none focus:border-indigo-500 text-indigo-300 resize-none leading-relaxed">${JSON.stringify(templates.report.memory, null, 2)}</textarea>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+    }
+
+    // Switch Tab Control
+    function switchTab(tabId) {
+      // Remove active design from old tab
+      document.getElementById(`tab-btn-${activeTabId}`).classList.remove('border-indigo-500', 'bg-white/5');
+      
+      // Update tab active id
+      activeTabId = tabId;
+
+      // Add active design to new tab
+      document.getElementById(`tab-btn-${activeTabId}`).classList.add('border-indigo-500', 'bg-white/5');
+
+      // Update UI title and endpoint fields
+      const titles = {
+        resume: ['Resume Intelligence', 'POST /api/resume', 'Tests binary PDF uploads & clean text extraction.'],
+        jd: ['JD Intelligence', 'POST /api/jd', 'Extracts structured blueprints from raw JDs.'],
+        match: ['Readiness Match', 'POST /api/match/raw', 'Evaluates alignments from direct JSON inputs.'],
+        interview: ['Interview Simulation', 'POST /api/interview/start', 'Simulates dynamic questions and answers.'],
+        judge: ['Judge Agent', 'POST /api/interview/judge', 'Evaluates answer transcripts against criteria.'],
+        roadmap: ['Career Intelligence', 'POST /api/roadmap', 'Formulates learning pathways, project specifications, and resume checkpoints.'],
+        report: ['Report Agent', 'POST /api/interview/report/raw', 'Compiles QA history & memory into report summaries.']
+      };
+
+      document.getElementById('active-tab-title').innerText = titles[tabId][0];
+      document.getElementById('active-endpoint').innerText = titles[tabId][1];
+      document.getElementById('req-method-desc').innerText = titles[tabId][2];
+      
+      // Hide or show main run button on Interview tab (as it has separate triggers)
+      const runBtn = document.getElementById('run-btn');
+      if (tabId === 'interview') {
+        runBtn.style.display = 'none';
+      } else {
+        runBtn.style.display = 'inline-flex';
+      }
+
+      renderRequestInputs();
+      
+      // Reset view to JSON view
+      setResponseView('json');
+    }
+
+    // File name update helper
+    function updateResumeFileName() {
+      const fileInput = document.getElementById('resume-file');
+      const label = document.getElementById('file-name');
+      if (fileInput.files && fileInput.files[0]) {
+        label.innerText = fileInput.files[0].name;
+      }
+    }
+
+    function getActiveBaseUrl() {
+      return document.getElementById('api-base-url').value.trim();
+    }
+
+    function updateBaseUrlSelect() {
+      const selected = document.querySelector('input[name="endpoint-select"]:checked').value;
+      const input = document.getElementById('api-base-url');
+      if (selected === 'local') {
+        input.value = 'http://localhost:8000';
+        input.readOnly = true;
+      } else if (selected === 'prod') {
+        input.value = 'https://hireintel-bv0v.onrender.com';
+        input.readOnly = true;
+      } else {
+        input.value = '';
+        input.placeholder = 'Paste custom endpoint URL here...';
+        input.readOnly = false;
+        input.focus();
+      }
+      pingAllAgents();
+    }
+
+    // Toggle Response Panel view (JSON vs visual preview)
+    function setResponseView(view) {
+      currentResponseView = view;
+      const jsonArea = document.getElementById('raw-response');
+      const previewArea = document.getElementById('visual-preview-container');
+      const btnJson = document.getElementById('btn-show-json');
+      const btnPreview = document.getElementById('btn-show-preview');
+
+      if (view === 'json') {
+        jsonArea.classList.remove('hidden');
+        previewArea.classList.add('hidden');
+        btnJson.className = "text-xs font-bold text-white border-b-2 border-teal-400 pb-0.5 focus:outline-none";
+        btnPreview.className = "text-xs font-bold text-slate-400 hover:text-white pb-0.5 focus:outline-none";
+      } else {
+        jsonArea.classList.add('hidden');
+        previewArea.classList.remove('hidden');
+        btnJson.className = "text-xs font-bold text-slate-400 hover:text-white pb-0.5 focus:outline-none";
+        btnPreview.className = "text-xs font-bold text-white border-b-2 border-teal-400 pb-0.5 focus:outline-none";
+        renderVisualPreview(activeTabId, lastFetchedResponse);
+      }
+    }
+
+    // Render formatted human-readable card layout based on the backend JSON response
+    function renderVisualPreview(tabId, data, latency = 0) {
+      const container = document.getElementById('visual-preview-container');
+      if (!data || data.error) {
+        container.innerHTML = `
+          <div class="text-center py-10 text-xs text-slate-500">
+            No active parsed data to visualize. Execute a playground test first.
+          </div>
+        `;
+        return;
+      }
+
+      function resolveParsedObject(input) {
+        if (!input) return {};
+        if (typeof input === 'string') {
+          try {
+            input = JSON.parse(input);
+          } catch(e) {
+            return {};
+          }
+        }
+        let obj = input.parsed || input.parsed_json || input.parsedData || input;
+        if (typeof obj === 'string') {
+          try {
+            obj = JSON.parse(obj);
+          } catch(e) {}
+        }
+        if (obj && obj !== input && (obj.parsed || obj.parsed_json || obj.parsedData)) {
+          return resolveParsedObject(obj);
+        }
+        return obj || {};
+      }
+
+      let html = '';
+      if (tabId === 'resume') {
+        const profile = resolveParsedObject(data);
+        const telemetry = data.telemetry || {
+          cached: false,
+          model: "Local Rules Heuristics",
+          cost: 0.0,
+          mode: "Offline/Local",
+          fallback: true
+        };
+        
+        // Dynamic Heuristics for Confidence & Source
+        let nameConf = "0%";
+        let nameSrc = "Not found";
+        if (profile.candidate_name && profile.candidate_name !== "Candidate Name") {
+          const fname = data.filename || "";
+          const nameClean = profile.candidate_name.replace(/\s+/g, '').toLowerCase();
+          const fnameClean = fname.replace(/[^A-Za-z]/g, '').toLowerCase();
+          if (fnameClean && fnameClean.includes(nameClean)) {
+            nameConf = "65%";
+            nameSrc = "Filename Fallback";
+          } else {
+            nameConf = "98%";
+            nameSrc = "Resume Header Section (Line 1-3)";
+          }
+        }
+
+        let headlineConf = profile.headline ? "85%" : "0%";
+        let headlineSrc = profile.headline ? "Resume Header Profile" : "Not extracted";
+
+        let emailConf = profile.email ? "99%" : "0%";
+        let emailSrc = profile.email ? "OCR Text Regex Match" : "Not extracted";
+
+        let phoneConf = profile.phone ? "99%" : "0%";
+        let phoneSrc = profile.phone ? "OCR Text Regex Match" : "Not extracted";
+
+        let locationConf = profile.location ? "85%" : "0%";
+        let locationSrc = profile.location ? "OCR Location Parser" : "Not extracted";
+
+        let summaryConf = profile.summary ? "90%" : "0%";
+        let summarySrc = profile.summary ? "LLM Context Synthesis" : "Not extracted";
+
+        // Helper to render basic key-value lines
+        function renderField(label, val, conf = "0%", src = "N/A") {
+          return `
+            <div class="py-2 flex justify-between items-start gap-4 border-b border-slate-800/30">
+              <div class="flex flex-col">
+                <span class="text-[9px] uppercase font-bold text-slate-500">${label}</span>
+                <span class="text-[8px] text-slate-500 mt-0.5 font-mono">Conf: ${conf} • Src: ${src}</span>
+              </div>
+              <span class="text-white font-semibold text-right leading-relaxed">${val || '<span class="text-slate-600 italic">Not found</span>'}</span>
+            </div>
+          `;
+        }
+
+        // Helper to render arrays as tag badges
+        function renderTags(label, list, conf = "0%", src = "N/A") {
+          if (!Array.isArray(list)) return '';
+          const cleaned = list.map(item => String(item).trim()).filter(Boolean);
+          return `
+            <div class="py-2.5 border-b border-slate-800/30">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-[9px] uppercase font-bold text-slate-500">${label}</span>
+                <span class="text-[8px] text-slate-500 font-mono">Conf: ${cleaned.length > 0 ? conf : '0%'} • Src: ${cleaned.length > 0 ? src : 'N/A'}</span>
+              </div>
+              <div class="flex flex-wrap gap-1">
+                ${cleaned.map(item => `<span class="bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/20 text-[9px] font-semibold">${item}</span>`).join('') || '<span class="text-slate-600 italic">None found</span>'}
+              </div>
+            </div>
+          `;
+        }
+
+        // Helper to render nested list blocks
+        function renderObjects(label, list, conf = "0%", src = "N/A", templateFn) {
+          const count = Array.isArray(list) ? list.length : 0;
+          return `
+            <div class="py-3 border-b border-slate-800/30">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-[9px] uppercase font-bold text-slate-500">${label}</span>
+                <span class="text-[8px] text-slate-500 font-mono">Conf: ${count > 0 ? conf : '0%'} • Src: ${count > 0 ? src : 'N/A'}</span>
+              </div>
+              <div class="space-y-2">
+                ${count > 0 ? list.map(templateFn).join('') : '<div class="text-slate-600 italic text-[11px]">No records found</div>'}
+              </div>
+            </div>
+          `;
+        }
+
+        // Social Links
+        let linksHtml = '';
+        if (profile.linkedin) linksHtml += `<a href="${profile.linkedin}" target="_blank" class="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 text-[9px] font-semibold">LinkedIn</a>`;
+        if (profile.github) linksHtml += `<a href="${profile.github}" target="_blank" class="px-2 py-0.5 rounded bg-slate-500/10 border border-slate-500/30 text-slate-300 hover:bg-slate-500/20 text-[9px] font-semibold">GitHub</a>`;
+        if (profile.portfolio) linksHtml += `<a href="${profile.portfolio}" target="_blank" class="px-2 py-0.5 rounded bg-teal-500/10 border border-teal-500/30 text-teal-400 hover:bg-teal-500/20 text-[9px] font-semibold">Portfolio</a>`;
+        if (profile.website) linksHtml += `<a href="${profile.website}" target="_blank" class="px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 text-[9px] font-semibold">Website</a>`;
+
+        // Combine skills
+        let skillsList = [];
+        if (Array.isArray(profile.skills)) skillsList = skillsList.concat(profile.skills);
+        if (Array.isArray(profile.technical_skills)) skillsList = skillsList.concat(profile.technical_skills);
+        if (Array.isArray(profile.soft_skills)) skillsList = skillsList.concat(profile.soft_skills);
+        if (Array.isArray(profile.programming_languages)) skillsList = skillsList.concat(profile.programming_languages);
+        if (Array.isArray(profile.frameworks)) skillsList = skillsList.concat(profile.frameworks);
+        if (Array.isArray(profile.tools)) skillsList = skillsList.concat(profile.tools);
+        if (Array.isArray(profile.databases)) skillsList = skillsList.concat(profile.databases);
+        if (Array.isArray(profile.cloud_platforms)) skillsList = skillsList.concat(profile.cloud_platforms);
+        const skills = [...new Set(skillsList)].filter(s => s && String(s).trim());
+
+        html = `
+          <div class="space-y-5 text-xs">
+            <!-- 1. Observability Telemetry Badge -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-900/60 p-3 rounded-lg border border-indigo-500/20">
+              <div class="flex flex-col">
+                <span class="text-[8px] uppercase tracking-wider text-slate-500 font-extrabold">Execution Time</span>
+                <span class="text-xs font-bold text-white mt-0.5">${latency || '--'} ms</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-[8px] uppercase tracking-wider text-slate-500 font-extrabold">Model Engine</span>
+                <span class="text-xs font-bold text-teal-400 mt-0.5">${telemetry.model}</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-[8px] uppercase tracking-wider text-slate-500 font-extrabold">Execution Mode</span>
+                <span class="text-xs font-bold text-indigo-400 mt-0.5">${telemetry.mode}</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-[8px] uppercase tracking-wider text-slate-500 font-extrabold">Estimated Cost</span>
+                <span class="text-xs font-mono text-emerald-400 mt-0.5">$${telemetry.cost.toFixed(5)}</span>
+              </div>
+            </div>
+
+            <!-- Database ID Badge -->
+            ${data.id ? `
+              <div class="bg-indigo-950/20 border border-indigo-500/20 rounded-lg p-2 flex items-center justify-between font-mono text-[9px] text-indigo-300">
+                <span>Resume ID: ${data.id}</span>
+                <button onclick="navigator.clipboard.writeText('${data.id}'); alert('Copied Resume Database ID!');" class="hover:text-white font-bold uppercase transition-colors">[Copy]</button>
+              </div>
+            ` : ''}
+
+            <!-- 2. Candidate Information -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60 space-y-2">
+              <span class="text-[9px] uppercase font-bold text-indigo-400 block mb-1">Candidate Profile</span>
+              ${renderField('Name', profile.candidate_name, nameConf, nameSrc)}
+              ${renderField('Headline', profile.headline, headlineConf, headlineSrc)}
+              ${renderField('Domain', profile.primary_domain, profile.primary_domain ? '90%' : '0%', profile.primary_domain ? 'LLM Semantic classification' : 'N/A')}
+              ${renderField('Seniority Level', profile.career_level, profile.career_level ? '85%' : '0%', profile.career_level ? 'LLM Experience Year classification' : 'N/A')}
+            </div>
+
+            <!-- 3. Contact Information -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60 space-y-2">
+              <span class="text-[9px] uppercase font-bold text-indigo-400 block mb-1">Contact Details</span>
+              ${renderField('Email', profile.email, emailConf, emailSrc)}
+              ${renderField('Phone', profile.phone, phoneConf, phoneSrc)}
+              ${renderField('Location', profile.location, locationConf, locationSrc)}
+            </div>
+
+            <!-- 4. Summary -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-[9px] uppercase font-bold text-indigo-400">Executive Summary</span>
+                <span class="text-[8px] text-slate-500 font-mono">Conf: ${summaryConf} • Src: ${summarySrc}</span>
+              </div>
+              <p class="text-slate-300 leading-relaxed text-[11px]">${profile.summary || '<span class="text-slate-600 italic">No summary extracted</span>'}</p>
+            </div>
+
+            <!-- 5. Skills -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60">
+              <span class="text-[9px] uppercase font-bold text-indigo-400 block mb-2">Skills & Competencies</span>
+              <div class="space-y-1">
+                ${renderTags('Extracted Skills', skills, skills.length > 0 ? '95%' : '0%', 'LLM Vocabulary Parser')}
+                ${renderTags('Top Strengths', profile.top_strengths, '90%', 'LLM Strength Extraction')}
+                ${renderTags('Potential Concerns', profile.potential_concerns, '88%', 'LLM Anomaly Detector')}
+                ${renderTags('Languages', profile.languages, '95%', 'OCR Language Parser')}
+              </div>
+            </div>
+
+            <!-- 6. Experience -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60 space-y-3">
+              ${renderObjects('Professional Work History', profile.experience, '92%', 'LLM Chronological Experience Timeline', e => `
+                <div class="p-2.5 rounded bg-slate-950/40 border border-slate-800/40 text-[11px]">
+                   <div class="flex justify-between font-bold text-white gap-2">
+                     <span>${e.title || 'Role'}</span>
+                     <span class="text-slate-400 text-[10px] font-normal shrink-0">${e.duration || ''}</span>
+                   </div>
+                   <div class="text-[10px] text-indigo-400 font-semibold mt-0.5">${e.company || ''} ${e.employment_type ? `(${e.employment_type})` : ''}</div>
+                   ${e.responsibilities && e.responsibilities.length > 0 ? `
+                     <ul class="list-disc pl-4 mt-2 space-y-1 text-slate-300">
+                       ${e.responsibilities.map(r => `<li>${r}</li>`).join('')}
+                     </ul>
+                   ` : ''}
+                </div>
+              `)}
+              ${renderObjects('Internships', profile.internships, '85%', 'LLM Internship Extractor', i => `
+                <div class="p-2.5 rounded bg-slate-950/40 border border-slate-800/40 text-[11px]">
+                  <div class="flex justify-between font-bold text-white gap-2">
+                    <span>${i.role || 'Intern'}</span>
+                    <span class="text-slate-400 text-[10px] font-normal shrink-0">${i.duration || ''}</span>
+                  </div>
+                  <div class="text-[10px] text-indigo-400 font-semibold mt-0.5">${i.company || ''}</div>
+                  ${i.summary ? `<p class="mt-1 text-slate-400">${i.summary}</p>` : ''}
+                </div>
+              `)}
+            </div>
+
+            <!-- 7. Projects -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60">
+              ${renderObjects('Projects Portfolio', profile.projects, '90%', 'LLM Project Parser', p => `
+                <div class="p-2.5 rounded bg-slate-950/40 border border-slate-800/40 text-[11px]">
+                  <div class="flex justify-between font-bold text-white gap-2">
+                    <span>${p.title || 'Project'}</span>
+                    <div class="flex gap-1.5 shrink-0">
+                      ${p.github ? `<a href="${p.github}" target="_blank" class="text-[9px] text-indigo-400 hover:underline">GitHub</a>` : ''}
+                      ${p.demo ? `<a href="${p.demo}" target="_blank" class="text-[9px] text-teal-400 hover:underline">Demo</a>` : ''}
+                    </div>
+                  </div>
+                  ${p.description ? `<p class="mt-1 text-slate-300">${p.description}</p>` : ''}
+                  ${p.technologies && p.technologies.length > 0 ? `
+                    <div class="flex flex-wrap gap-1 mt-1.5">
+                      ${p.technologies.map(t => `<span class="bg-white/5 border border-white/5 rounded px-1 text-[8px] text-slate-500">${t}</span>`).join('')}
+                    </div>
+                  ` : ''}
+                </div>
+              `)}
+            </div>
+
+            <!-- 8. Education -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60">
+              ${renderObjects('Academic Records', profile.education, '94%', 'LLM Academic Timeline Tracker', ed => `
+                <div class="p-2.5 rounded bg-slate-950/40 border border-slate-800/40 text-[11px]">
+                  <div class="flex justify-between font-bold text-white gap-2">
+                    <span>${ed.degree || 'Degree'} ${ed.branch ? `in ${ed.branch}` : ''}</span>
+                    <span class="text-slate-400 text-[10px] font-normal shrink-0">${ed.year || ''}</span>
+                  </div>
+                  <div class="text-[10px] text-indigo-400 font-semibold mt-0.5">${ed.institution || ''}</div>
+                  ${ed.cgpa ? `<div class="mt-1 text-[10px] text-slate-500">Result: ${ed.cgpa}</div>` : ''}
+                </div>
+              `)}
+            </div>
+
+            <!-- 9. Certifications -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60">
+              ${renderTags('Certifications', profile.certifications, '90%', 'Local Regex Cert Scanner')}
+            </div>
+
+            <!-- 10. Links -->
+            <div class="bg-slate-900/20 p-3.5 rounded border border-slate-800/60 flex items-center justify-between">
+              <div class="flex flex-col">
+                <span class="text-[9px] uppercase font-bold text-indigo-400">Verified Links</span>
+                <span class="text-[8px] text-slate-500 font-mono mt-0.5">Conf: ${linksHtml ? '99%' : '0%'} • Src: OCR Link Extractor</span>
+              </div>
+              <div class="flex gap-1.5">${linksHtml || '<span class="text-slate-600 italic">None found</span>'}</div>
+            </div>
+
+            <!-- 11. Collapsed Raw JSON pre details -->
+            <details class="bg-slate-900/60 border border-slate-800/80 rounded-lg p-3 cursor-pointer select-none">
+              <summary class="text-[9px] uppercase font-bold text-indigo-400 hover:text-white transition-colors flex items-center justify-between">
+                <span>Raw Parsed JSON (Developer Console)</span>
+                <span class="text-[8px] text-slate-500 font-mono lowercase">click to expand</span>
+              </summary>
+              <pre class="mt-3 text-[10px] font-mono text-teal-400 bg-slate-950/60 border border-slate-900 p-2.5 rounded overflow-x-auto max-h-60 leading-relaxed">${JSON.stringify(data, null, 2)}</pre>
+            </details>
+          </div>
+        `;
+      } else if (tabId === 'jd') {
+        const blueprint = resolveParsedObject(data);
+        const title = blueprint.title || "N/A";
+        const exp = blueprint.experience || "N/A";
+        const reqSkills = blueprint.required_skills || [];
+        const prefSkills = blueprint.preferred_skills || [];
+        const domain = blueprint.domain || "N/A";
+
+        html = `
+          <div class="space-y-4 text-xs">
+            <!-- Database ID Badge -->
+            ${data.id ? `
+              <div class="bg-indigo-950/20 border border-indigo-500/20 rounded-lg p-2 flex items-center justify-between font-mono text-[9px] text-indigo-300 mb-3">
+                <span>Job Description ID: ${data.id}</span>
+                <button onclick="navigator.clipboard.writeText('${data.id}'); alert('Copied Job Description ID!');" class="hover:text-white font-bold uppercase transition-colors">[Copy]</button>
+              </div>
+            ` : ''}
+            <div class="border-b border-slate-800 pb-3">
+              <h3 class="text-base font-bold text-white">${title}</h3>
+              <p class="text-slate-400 mt-1">Experience Required: ${exp} • Domain: ${domain}</p>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-teal-400 block mb-1.5">Required Skills</span>
+              <div class="flex flex-wrap gap-1.5">
+                ${reqSkills.map(s => `<span class="bg-teal-500/10 text-teal-300 px-2.5 py-0.5 rounded border border-teal-500/20 text-[10px]">${s}</span>`).join('') || '<span class="text-slate-500">None specified</span>'}
+              </div>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1.5">Preferred Skills</span>
+              <div class="flex flex-wrap gap-1.5">
+                ${prefSkills.map(s => `<span class="bg-indigo-500/10 text-indigo-300 px-2.5 py-0.5 rounded border border-indigo-500/20 text-[10px]">${s}</span>`).join('') || '<span class="text-slate-500">None specified</span>'}
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (tabId === 'match') {
+        const fit = data.matchScore || 0;
+        const strengths = data.strengths || [];
+        const missing = data.missing_skills || [];
+        const justifications = data.justifications || [];
+        
+        html = `
+          <div class="space-y-4 text-xs">
+            <div class="flex items-center gap-4 border-b border-slate-800 pb-3">
+              <div class="w-14 h-14 rounded-full flex items-center justify-center border-2 border-indigo-500 text-white font-extrabold text-lg bg-indigo-500/10 animate-pulse">
+                ${fit}%
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-white">Readiness Match Alignment</h3>
+                <p class="text-[10px] text-slate-400 mt-0.5">Automated screening metrics</p>
+              </div>
+            </div>
+
+            <!-- Justification Explainability list -->
+            ${justifications.length > 0 ? `
+              <div class="bg-slate-900/60 border border-slate-850 p-3 rounded-lg space-y-2">
+                <span class="text-[9px] uppercase font-bold text-teal-400 block tracking-wider">Justification & Logic (Explainability)</span>
+                <div class="space-y-1.5 text-[11px] text-slate-300">
+                  ${justifications.map(j => `
+                    <div class="flex items-start gap-2 leading-relaxed">
+                      ${j.type === 'success' ? '<span class="text-emerald-400 font-bold">✓</span>' : j.type === 'warning' ? '<span class="text-amber-400 font-bold">⚠</span>' : '<span class="text-indigo-400 font-bold">ℹ</span>'}
+                      <span>${j.text}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+
+            <div>
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1.5">Alignment Strengths</span>
+              <ul class="list-disc pl-4 text-slate-300 space-y-1">
+                ${strengths.map(s => `<li>${s}</li>`).join('') || '<li>No specific strengths recorded.</li>'}
+              </ul>
+            </div>
+            
+            <div>
+              <span class="text-[10px] uppercase font-bold text-rose-400 block mb-1.5">Identified Gaps (Missing Skills)</span>
+              <div class="flex flex-wrap gap-1.5">
+                ${missing.map(g => `<span class="bg-rose-500/10 text-rose-300 px-2.5 py-0.5 rounded border border-rose-500/20 text-[10px]">${g}</span>`).join('') || '<span class="text-emerald-400 font-semibold">Perfect skills alignment! No gaps detected.</span>'}
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (tabId === 'interview') {
+        if (!interviewHistory || interviewHistory.length === 0) {
+          html = `
+            <div class="flex flex-col items-center justify-center py-12 text-center text-xs text-slate-500">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-slate-700 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span>No active interview chat session. Click "Start Session" in the Request Builder to begin.</span>
+            </div>
+          `;
+        } else {
+          html = `
+            <div class="flex flex-col h-[520px] justify-between text-xs font-sans min-h-0">
+              <!-- Chat Timeline Area -->
+              <div class="flex-grow overflow-y-auto space-y-4 pr-1 mb-4">
+                ${interviewHistory.map((item, idx) => {
+                  let chatHtml = `
+                    <!-- Question bubble (left-aligned) -->
+                    <div class="flex flex-col items-start gap-1">
+                      <div class="flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase">
+                        <span>Q${idx + 1} • ${item.category}</span>
+                        <span class="text-indigo-400">★ ${item.difficulty}</span>
+                      </div>
+                      <div class="bg-indigo-650/10 border border-indigo-500/20 text-slate-200 px-4 py-3 rounded-xl rounded-tl-none max-w-[85%] leading-relaxed shadow-sm">
+                        ${item.question}
+                      </div>
+                    </div>
+                  `;
+                  
+                  if (item.answer) {
+                    let statsHtml = "";
+                    if (item.evaluation) {
+                      const acc = item.evaluation.accuracy || 0;
+                      const depth = item.evaluation.depth || 0;
+                      const comm = item.evaluation.communication || 0;
+                      statsHtml = `
+                        <div class="mt-2 pt-2 border-t border-teal-500/20 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-teal-300 font-bold">
+                          <span>Acc: ${acc}%</span>
+                          <span>Depth: ${depth}%</span>
+                          <span>Comm: ${comm}%</span>
+                          <span>Pace: ${Math.round(item.latencySec)}s</span>
+                        </div>
+                      `;
+                    } else {
+                      statsHtml = `
+                        <div class="mt-1 text-[9px] text-slate-500 italic">
+                          Pacing: ${Math.round(item.latencySec)}s • Word count: ${item.wordCount} words
+                        </div>
+                      `;
+                    }
+                    
+                    chatHtml += `
+                      <!-- Answer bubble (right-aligned) -->
+                      <div class="flex flex-col items-end gap-1 mt-2">
+                        <div class="text-[10px] text-slate-500 font-bold uppercase text-right">Candidate Answer</div>
+                        <div class="bg-teal-950/20 border border-teal-500/20 text-slate-300 px-4 py-3 rounded-xl rounded-tr-none max-w-[85%] leading-relaxed shadow-sm self-end">
+                          <div>${item.answer}</div>
+                          ${statsHtml}
+                        </div>
+                      </div>
+                    `;
+                  }
+                  
+                  return chatHtml;
+                }).join('')}
+              </div>
+              
+              <!-- Session Status Header/Footer -->
+              <div class="border-t border-slate-900 pt-3 flex items-center justify-between text-[10px] text-slate-500 font-bold">
+                <span>Active Question Index: ${currentQuestionIndex}</span>
+                <span class="text-indigo-400 font-mono">${isInterviewActive ? "🟢 SIMULATOR LIVE" : "🔴 COMPLETED"}</span>
+              </div>
+            </div>
+          `;
+        }
+      } else if (tabId === 'judge') {
+        const score = data.accuracy || 0;
+        const depth = data.depth || 0;
+        const comm = data.communication || 0;
+        const feed = data.feedback || "No evaluator comments.";
+        
+        html = `
+          <div class="space-y-4 text-xs">
+            <div class="border-b border-slate-800 pb-3">
+              <h3 class="text-sm font-bold text-white">Evaluator Transcript Assessment</h3>
+            </div>
+            <div class="space-y-2">
+              <div>
+                <div class="flex justify-between mb-1 text-[10px] font-semibold text-slate-300">
+                  <span>Accuracy</span>
+                  <span>${score}%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-teal-400 h-full rounded-full" style="width: ${score}%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between mb-1 text-[10px] font-semibold text-slate-300">
+                  <span>Technical Depth</span>
+                  <span>${depth}%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-indigo-400 h-full rounded-full" style="width: ${depth}%"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between mb-1 text-[10px] font-semibold text-slate-300">
+                  <span>Communication & Delivery</span>
+                  <span>${comm}%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-amber-400 h-full rounded-full" style="width: ${comm}%"></div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-slate-900/60 p-3 rounded border border-slate-800">
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-1">Evaluator Feedback</span>
+              <p class="text-slate-300 leading-relaxed">${feed}</p>
+            </div>
+          </div>
+        `;
+      } else if (tabId === 'report') {
+        const score = data.overall_score || data.score || 0;
+        const recommendation = data.recommendation || "Needs Review";
+        const strengths = data.strengths || [];
+        const gaps = data.gaps || [];
+
+        html = `
+          <div class="space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="text-base font-bold text-white">Assessment Candidate Report</h3>
+                <p class="text-[10px] text-slate-400 mt-0.5">Recommendation: <span class="font-bold text-indigo-400">${recommendation}</span></p>
+              </div>
+              <div class="text-right">
+                <span class="text-2xl font-black text-white">${score}%</span>
+                <span class="text-[9px] text-slate-500 block">Overall Score</span>
+              </div>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-emerald-400 block mb-1.5">Top Strengths</span>
+              <ul class="list-disc pl-4 text-slate-300 space-y-1">
+                ${strengths.map(s => `<li>${s}</li>`).join('') || '<li>None recorded.</li>'}
+              </ul>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-rose-400 block mb-1.5">Identified Gaps</span>
+              <ul class="list-disc pl-4 text-slate-300 space-y-1">
+                ${gaps.map(g => `<li>${g}</li>`).join('') || '<li>None recorded.</li>'}
+              </ul>
+            </div>
+          </div>
+        `;
+      } else if (tabId === 'roadmap') {
+        const readiness = data.current_readiness || 0;
+        const timeline = data.estimated_time || "N/A";
+        const probability = data.success_probability || "Medium";
+        const missing = data.missing_skills || [];
+        const milestones = data.weekly_milestones || [];
+        const projects = data.projects_to_build || [];
+        const checkpoints = data.resume_checkpoint_upgrades || [];
+
+        html = `
+          <div class="space-y-4 text-xs">
+            <!-- Top Dashboard Stats -->
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="text-sm font-bold text-white">Career Intelligence Summary</h3>
+                <p class="text-[10px] text-slate-400 mt-0.5">Success probability: <span class="font-bold text-indigo-400">${probability}</span></p>
+              </div>
+              <div class="flex gap-4 text-right">
+                <div>
+                  <span class="text-lg font-black text-emerald-400 block">${readiness}%</span>
+                  <span class="text-[9px] text-slate-500 block">Readiness</span>
+                </div>
+                <div>
+                  <span class="text-lg font-black text-indigo-400 block">${timeline}</span>
+                  <span class="text-[9px] text-slate-500 block">Duration</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gaps list -->
+            <div>
+              <span class="text-[10px] uppercase font-bold text-rose-400 block mb-1">Target Skills Gap Focus</span>
+              <div class="flex flex-wrap gap-1">
+                ${missing.map(m => `<span class="bg-rose-500/10 text-rose-300 px-2 py-0.5 rounded border border-rose-500/20 text-[9px] font-mono">${m}</span>`).join('') || '<span class="text-slate-500">None detected</span>'}
+              </div>
+            </div>
+
+            <!-- Timeline Milestones -->
+            <div>
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block mb-2">Weekly Milestones & Focus Path</span>
+              <div class="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                ${milestones.map(m => `
+                  <div class="bg-slate-900/60 border border-slate-800 p-2 rounded-lg">
+                    <div class="flex justify-between items-center mb-1 text-[10px] font-bold text-indigo-300">
+                      <span>${m.week}</span>
+                      <span class="text-slate-400 font-sans">${m.focus}</span>
+                    </div>
+                    <ul class="list-disc pl-3 text-slate-400 space-y-0.5 text-[9px]">
+                      ${(m.tasks || []).map(t => `<li>${t}</li>`).join('')}
+                    </ul>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Projects & Specifications -->
+            <div>
+              <span class="text-[10px] uppercase font-bold text-teal-400 block mb-2">Target Bridge Projects</span>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                ${projects.map(p => `
+                  <div class="bg-slate-900/60 border border-slate-800/80 p-2 rounded-lg">
+                    <div class="text-[10px] font-bold text-white mb-0.5">${p.title}</div>
+                    <div class="text-[9px] font-mono text-teal-300 mb-1.5">${p.spec}</div>
+                    <ul class="list-disc pl-3 text-slate-400 space-y-0.5 text-[9px]">
+                      ${(p.tasks || []).map(t => `<li>${t}</li>`).join('')}
+                    </ul>
+                  </div>
+                `).join('') || '<div class="text-slate-500 italic">No custom projects required</div>'}
+              </div>
+            </div>
+
+            <!-- Resume Upgrade Checklist -->
+            <div>
+              <span class="text-[10px] uppercase font-bold text-amber-400 block mb-2">Resume Upgrade Checkpoints</span>
+              <div class="space-y-2 max-h-[120px] overflow-y-auto pr-1">
+                ${checkpoints.map((c, cIdx) => `
+                  <div class="bg-slate-900/60 border border-slate-800 p-2 rounded-lg">
+                    <div class="text-[10px] font-bold text-amber-300 mb-1">${c.milestone} Checkpoint</div>
+                    <div class="space-y-1">
+                      ${(c.checkpoints || []).map((cp, idx) => `
+                        <label class="flex items-start gap-2 cursor-pointer text-slate-400 hover:text-white">
+                          <input type="checkbox" id="chk-${cIdx}-${idx}" class="mt-0.5 h-3 w-3 accent-amber-500 rounded border-slate-700 bg-slate-900 text-slate-800" />
+                          <span class="text-[9px] leading-relaxed">${cp}</span>
+                        </label>
+                      `).join('')}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        html = `<div class="text-center py-10 text-xs text-slate-500">Visual layout view for this agent is coming soon.</div>`;
+      }
+
+      container.innerHTML = html;
+    }
+
+    // Ping Backend Base Server & Expose Latency
+    const agents = [
+      { name: 'Resume Agent', endpoint: '/api/resume', method: 'POST', id: 'health-resume' },
+      { name: 'JD Agent', endpoint: '/api/jd', method: 'GET', id: 'health-jd' },
+      { name: 'Match Agent', endpoint: '/api/match/raw', method: 'POST', id: 'health-match' },
+      { name: 'Interview Agent', endpoint: '/api/interview/reports', method: 'GET', id: 'health-interview' },
+      { name: 'Judge Agent', endpoint: '/api/interview/judge', method: 'POST', id: 'health-judge' },
+      { name: 'Career Agent', endpoint: '/api/roadmap', method: 'POST', id: 'health-roadmap' },
+      { name: 'Report Agent', endpoint: '/api/interview/report/raw', method: 'POST', id: 'health-report' }
+    ];
+
+    async function pingAllAgents() {
+      const baseUrl = getActiveBaseUrl();
+      for (const agent of agents) {
+        const row = document.getElementById(agent.id);
+        row.innerHTML = `<span class="text-slate-400">${agent.name}:</span> <span class="text-slate-500 animate-pulse">Pinging...</span>`;
+        
+        const start = performance.now();
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
+          
+          await fetch(`${baseUrl}${agent.endpoint}`, {
+            method: agent.method === 'GET' ? 'GET' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: agent.method === 'GET' ? undefined : JSON.stringify({}),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          
+          const latency = Math.round(performance.now() - start);
+          row.innerHTML = `
+            <span class="text-slate-300 font-medium">${agent.name}:</span>
+            <div class="flex items-center gap-1.5 ml-auto">
+              <span class="text-[9px] font-bold text-slate-400 font-mono">${latency} ms</span>
+              <span class="text-emerald-400 font-bold">🟢 Online</span>
+            </div>
+          `;
+        } catch (err) {
+          const latency = Math.round(performance.now() - start);
+          if (err.name === 'AbortError' || err.message.includes('Failed to fetch')) {
+            if (latency > 10 && latency < 2000) {
+              row.innerHTML = `
+                <span class="text-slate-300 font-medium">${agent.name}:</span>
+                <div class="flex items-center gap-1.5 ml-auto">
+                  <span class="text-[9px] font-bold text-slate-400 font-mono">${latency} ms</span>
+                  <span class="text-emerald-400 font-bold">🟢 Online</span>
+                </div>
+              `;
+            } else {
+              row.innerHTML = `
+                <span class="text-slate-300 font-medium">${agent.name}:</span>
+                <span class="text-rose-500 font-bold ml-auto">🔴 Offline</span>
+              `;
+            }
+          } else {
+            row.innerHTML = `
+              <span class="text-slate-300 font-medium">${agent.name}:</span>
+              <div class="flex items-center gap-1.5 ml-auto">
+                <span class="text-[9px] font-bold text-slate-400 font-mono">${latency} ms</span>
+                <span class="text-emerald-400 font-bold">🟢 Online</span>
+              </div>
+            `;
+          }
+        }
+      }
+    }
+
+    // Display formatted response JSON
+    function displayResponse(code, data, latency) {
+      lastFetchedResponse = data;
+      document.getElementById('response-code').innerText = code;
+      
+      const responseArea = document.getElementById('raw-response');
+      responseArea.value = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      document.getElementById('api-latency').innerText = `Time: ${latency} ms`;
+
+      const codeBadge = document.getElementById('response-code');
+      if (code >= 200 && code < 300) {
+        codeBadge.className = "text-[10px] px-2 py-0.5 rounded border border-emerald-500/20 text-emerald-400 bg-emerald-500/10 font-bold";
+        
+        // Auto-save IDs returned by endpoints
+        if (activeTabId === 'resume' && data.id) {
+          lastResumeDbId = data.id;
+        } else if (activeTabId === 'jd' && data.id) {
+          lastJdDbId = data.id;
+        }
+        
+        // Update visual preview box too
+        renderVisualPreview(activeTabId, data, latency);
+      } else {
+        codeBadge.className = "text-[10px] px-2 py-0.5 rounded border border-rose-500/20 text-rose-400 bg-rose-500/10 font-bold";
+        document.getElementById('visual-preview-container').innerHTML = `
+          <div class="text-rose-400 text-xs p-4 bg-rose-500/5 border border-rose-500/10 rounded-lg">
+            <strong>Error ${code}</strong>: Failed to compute agent. Inspect the JSON Response tab for more details.
+          </div>
+        `;
+      }
+    }
+
+    // Copy Response payload to clipboard
+    function copyResponse() {
+      const responseArea = document.getElementById('raw-response');
+      if (responseArea.value) {
+        navigator.clipboard.writeText(responseArea.value);
+        alert('Response payload copied to clipboard!');
+      }
+    }
+
+    // cURL generation helper
+    function generateCurlCommand() {
+      const baseUrl = getActiveBaseUrl();
+      let curl = '';
+      
+      if (activeTabId === 'resume') {
+        curl = `curl -X POST "${baseUrl}/api/resume" \\\n  -H "accept: application/json" \\\n  -H "Content-Type: multipart/form-data" \\\n  -F "file=@your_resume.pdf"`;
+      } else if (activeTabId === 'jd') {
+        const text = document.getElementById('jd-text').value.trim();
+        const payload = JSON.stringify({ text });
+        curl = `curl -X POST "${baseUrl}/api/jd" \\\n  -H "Content-Type: application/json" \\\n  -d '${payload.replace(/'/g, "'\\''")}'`;
+      } else if (activeTabId === 'match') {
+        const isRawMode = document.getElementById('match-raw-mode') && document.getElementById('match-raw-mode').checked;
+        if (isRawMode) {
+          const resume_json = document.getElementById('match-resume-json').value.trim();
+          const jd_json = document.getElementById('match-jd-json').value.trim();
+          try {
+            const payload = JSON.stringify({ resume_json: JSON.parse(resume_json), jd_json: JSON.parse(jd_json) });
+            curl = `curl -X POST "${baseUrl}/api/match/raw" \\\n  -H "Content-Type: application/json" \\\n  -d '${payload.replace(/'/g, "'\\''")}'`;
+          } catch(e) {
+            curl = `// Invalid JSON input in request fields`;
+          }
+        } else {
+          const resumeId = document.getElementById('match-resume-id').value.trim();
+          const jdId = document.getElementById('match-jd-id').value.trim();
+          const payload = JSON.stringify({ resume_id: resumeId || "RESUME_ID", jd_id: jdId || "JD_ID" });
+          curl = `curl -X POST "${baseUrl}/api/match" \\\n  -H "Content-Type: application/json" \\\n  -d '${payload.replace(/'/g, "'\\''")}'`;
+        }
+      } else if (activeTabId === 'interview') {
+        const resumeId = document.getElementById('int-resume-id').value.trim();
+        const jdId = document.getElementById('int-jd-id').value.trim();
+        const payload = JSON.stringify({ resume_id: resumeId || "RESUME_ID", jd_id: jdId || "JD_ID" });
+        curl = `curl -X POST "${baseUrl}/api/interview/start" \\\n  -H "Content-Type: application/json" \\\n  -d '${payload.replace(/'/g, "'\\''")}'`;
+      } else if (activeTabId === 'judge') {
+        const question = document.getElementById('judge-question').value.trim();
+        const answer = document.getElementById('judge-answer').value.trim();
+        try {
+          const signals = JSON.parse(document.getElementById('judge-signals').value);
+          const payload = JSON.stringify({ question, answer, signals });
+          curl = `curl -X POST "${baseUrl}/api/interview/judge" \\\n  -H "Content-Type: application/json" \\\n  -d '${payload.replace(/'/g, "'\\''")}'`;
+        } catch(e) {
+          curl = `// Invalid JSON input in signals`;
+        }
+      } else if (activeTabId === 'roadmap') {
+        try {
+          const resume = JSON.parse(document.getElementById('roadmap-resume-json').value);
+          const target_role = document.getElementById('roadmap-role').value.trim();
+          const target_company = document.getElementById('roadmap-company').value.trim();
+          const target_jd = JSON.parse(document.getElementById('roadmap-jd-json').value);
+          const payload = JSON.stringify({ resume, target_role, target_company, target_jd });
+          curl = `curl -X POST "${baseUrl}/api/roadmap" \\\n  -H "Content-Type: application/json" \\\n  -d '${payload.replace(/'/g, "'\\''")}'`;
+        } catch(e) {
+          curl = `// Invalid JSON input in request fields`;
+        }
+      } else if (activeTabId === 'report') {
+        try {
+          const all_qa = JSON.parse(document.getElementById('report-qa-json').value);
+          const memory = JSON.parse(document.getElementById('report-memory-json').value);
+          const payload = JSON.stringify({ all_qa, memory });
+          curl = `curl -X POST "${baseUrl}/api/interview/report/raw" \\\n  -H "Content-Type: application/json" \\\n  -d '${payload.replace(/'/g, "'\\''")}'`;
+        } catch(e) {
+          curl = `// Invalid JSON input in request fields`;
+        }
+      }
+      return curl;
+    }
+
+    function copyCurl() {
+      const curl = generateCurlCommand();
+      navigator.clipboard.writeText(curl);
+      alert('cURL command copied to clipboard!');
+    }
+
+    // Export Response Payload to Downloads
+    function exportResponse() {
+      const responseArea = document.getElementById('raw-response');
+      const text = responseArea.value;
+      if (!text || text.startsWith('Click') || text.startsWith('Invoking') || text.startsWith('Pending')) {
+        alert('No response payload available to export.');
+        return;
+      }
+      
+      const filenames = {
+        resume: 'resume.json',
+        jd: 'jd_blueprint.json',
+        match: 'match_result.json',
+        interview: 'interview_session.json',
+        judge: 'judge_evaluation.json',
+        roadmap: 'career_roadmap.json',
+        report: 'report.json'
+      };
+      
+      const filename = filenames[activeTabId] || 'response.json';
+      const blob = new Blob([text], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Run active playground test
+    async function runActiveAgentTest() {
+      const baseUrl = getActiveBaseUrl();
+      const start = Date.now();
+      displayResponse('Pending...', 'Invoking AI Agent in backend, please wait...', 0);
+
+      try {
+        if (activeTabId === 'resume') {
+          const fileInput = document.getElementById('resume-file');
+          if (!fileInput.files || !fileInput.files[0]) {
+            displayResponse(400, { error: 'Please select a resume PDF file to upload.' }, 0);
+            return;
+          }
+          const formData = new FormData();
+          formData.append('file', fileInput.files[0]);
+
+          const res = await fetch(`${baseUrl}/api/resume`, {
+            method: 'POST',
+            body: formData
+          });
+          const latency = Date.now() - start;
+          const data = await res.json();
+          displayResponse(res.status, data, latency);
+
+        } else if (activeTabId === 'jd') {
+          const text = document.getElementById('jd-text').value.trim();
+          const res = await fetch(`${baseUrl}/api/jd`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+          });
+          const latency = Date.now() - start;
+          const data = await res.json();
+          displayResponse(res.status, data, latency);
+
+        } else if (activeTabId === 'match') {
+          const isRawMode = document.getElementById('match-raw-mode') && document.getElementById('match-raw-mode').checked;
+          if (isRawMode) {
+            const resume_json = JSON.parse(document.getElementById('match-resume-json').value);
+            const jd_json = JSON.parse(document.getElementById('match-jd-json').value);
+
+            const res = await fetch(`${baseUrl}/api/match/raw`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ resume_json, jd_json })
+            });
+            const latency = Date.now() - start;
+            const data = await res.json();
+            displayResponse(res.status, data, latency);
+          } else {
+            const resume_id = document.getElementById('match-resume-id').value.trim();
+            const jd_id = document.getElementById('match-jd-id').value.trim();
+            if (!resume_id || !jd_id) {
+              displayResponse(400, { error: 'Please specify both Resume Database ID and Job Description ID, or toggle Advanced Mode.' }, 0);
+              return;
+            }
+
+            const res = await fetch(`${baseUrl}/api/match`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ resume_id, jd_id })
+            });
+            const latency = Date.now() - start;
+            const data = await res.json();
+            displayResponse(res.status, data, latency);
+          }
+
+        } else if (activeTabId === 'judge') {
+          const question = document.getElementById('judge-question').value.trim();
+          const answer = document.getElementById('judge-answer').value.trim();
+          const signals = JSON.parse(document.getElementById('judge-signals').value);
+
+          const res = await fetch(`${baseUrl}/api/interview/judge`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, answer, signals })
+          });
+          const latency = Date.now() - start;
+          const data = await res.json();
+          displayResponse(res.status, data, latency);
+
+        } else if (activeTabId === 'roadmap') {
+          const resume = JSON.parse(document.getElementById('roadmap-resume-json').value);
+          const target_role = document.getElementById('roadmap-role').value.trim();
+          const target_company = document.getElementById('roadmap-company').value.trim();
+          const target_jd = JSON.parse(document.getElementById('roadmap-jd-json').value);
+
+          const res = await fetch(`${baseUrl}/api/roadmap`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resume, target_role, target_company, target_jd })
+          });
+          const latency = Date.now() - start;
+          const data = await res.json();
+          displayResponse(res.status, data, latency);
+
+        } else if (activeTabId === 'report') {
+          const all_qa = JSON.parse(document.getElementById('report-qa-json').value);
+          const memory = JSON.parse(document.getElementById('report-memory-json').value);
+
+          const res = await fetch(`${baseUrl}/api/interview/report/raw`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ all_qa, memory })
+          });
+          const latency = Date.now() - start;
+          const data = await res.json();
+          displayResponse(res.status, data, latency);
+        }
+      } catch (err) {
+        const latency = Date.now() - start;
+        displayResponse(500, { error: 'Failed to connect to agent backend. Make sure the backend server is running and CORS is enabled.', details: err.message }, latency);
+      }
+    }
+
+    // State variables for Interview simulator
+    let lastResumeDbId = "";
+    let lastJdDbId = "";
+    let currentQuestionText = "";
+    let currentCategory = "";
+    let currentQuestionIndex = 0;
+    let interviewHistory = [];
+    let isInterviewActive = false;
+
+    // Interview specific helper functions
+    async function startInterviewSession() {
+      const baseUrl = getActiveBaseUrl();
+      const resumeId = document.getElementById('int-resume-id').value.trim();
+      const jdId = document.getElementById('int-jd-id').value.trim();
+      
+      if (!resumeId || !jdId) {
+        alert('Please fill out both Resume ID and Job Description ID.');
+        return;
+      }
+
+      const start = Date.now();
+      displayResponse('Pending...', 'Starting interview simulation session...', 0);
+
+      try {
+        const res = await fetch(`${baseUrl}/api/interview/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resume_id: resumeId, jd_id: jdId })
+        });
+        const latency = Date.now() - start;
+        const data = await res.json();
+        
+        if (data.interview_id) {
+          document.getElementById('int-interview-id').value = data.interview_id;
+          currentQuestionText = data.question || "";
+          currentCategory = data.category || "Technical";
+          currentQuestionIndex = 1;
+          isInterviewActive = true;
+          
+          // Initialize chat history log
+          interviewHistory = [{
+            question: currentQuestionText,
+            category: currentCategory,
+            difficulty: 'Medium',
+            answer: null,
+            evaluation: null,
+            latencySec: 0,
+            wordCount: 0
+          }];
+          
+          // Switch response view to Visual Preview
+          setResponseView('preview');
+        }
+        displayResponse(res.status, data, latency);
+      } catch (err) {
+        displayResponse(500, { error: 'Failed to start interview session.', details: err.message }, Date.now() - start);
+      }
+    }
+
+    async function submitInterviewAnswer() {
+      const baseUrl = getActiveBaseUrl();
+      const interviewId = document.getElementById('int-interview-id').value.trim();
+      const answer = document.getElementById('int-answer').value.trim();
+
+      if (!interviewId || !isInterviewActive) {
+        alert('Please start the simulation first by clicking "Start Session".');
+        return;
+      }
+      if (!answer) {
+        alert('Please type in your answer response.');
+        return;
+      }
+
+      const start = Date.now();
+      displayResponse('Pending...', 'Evaluating response and fetching next question...', 0);
+
+      const computedWordCount = answer.split(/\s+/).filter(Boolean).length;
+      // Mock vocal parameters for simulation telemetry
+      const mockSignals = {
+        responseTime: Math.round((Date.now() - start) / 1000) || 15,
+        latencySeconds: (Date.now() - start) / 1000,
+        wordCount: computedWordCount,
+        wordsPerMinute: 120,
+        fillerCount: Math.round(computedWordCount * 0.05) || 0
+      };
+
+      try {
+        const res = await fetch(`${baseUrl}/api/interview/answer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            interview_id: interviewId,
+            question_text: currentQuestionText,
+            category: currentCategory,
+            answer_text: answer,
+            signals: mockSignals
+          })
+        });
+        const latency = Date.now() - start;
+        const data = await res.json();
+        
+        // Append user response details to current question log
+        if (interviewHistory.length > 0) {
+          const activeItem = interviewHistory[interviewHistory.length - 1];
+          activeItem.answer = answer;
+          activeItem.evaluation = data.evaluation || null;
+          activeItem.latencySec = mockSignals.latencySeconds;
+          activeItem.wordCount = mockSignals.wordCount;
+        }
+
+        if (data.finished) {
+          isInterviewActive = false;
+          currentQuestionText = "";
+          currentCategory = "";
+        } else {
+          currentQuestionText = data.question || "";
+          currentCategory = data.category || "Technical";
+          currentQuestionIndex += 1;
+          
+          // Push next question to history log
+          interviewHistory.push({
+            question: currentQuestionText,
+            category: currentCategory,
+            difficulty: data.difficulty_level || 'Medium',
+            answer: null,
+            evaluation: null,
+            latencySec: 0,
+            wordCount: 0
+          });
+        }
+        
+        // Clear answer text area
+        document.getElementById('int-answer').value = "";
+        
+        // Switch response view to Visual Preview
+        setResponseView('preview');
+        displayResponse(res.status, data, latency);
+      } catch (err) {
+        displayResponse(500, { error: 'Failed to submit response.', details: err.message }, Date.now() - start);
+      }
+    }
+
+    function toggleMatchRawMode() {
+      const isRaw = document.getElementById('match-raw-mode') && document.getElementById('match-raw-mode').checked;
+      const idInputs = document.getElementById('match-id-inputs');
+      const jsonInputs = document.getElementById('match-json-inputs');
+      if (idInputs && jsonInputs) {
+        if (isRaw) {
+          idInputs.classList.add('hidden');
+          jsonInputs.classList.remove('hidden');
+        } else {
+          idInputs.classList.remove('hidden');
+          jsonInputs.classList.add('hidden');
+        }
+      }
+    }
+
+    // Initialize Default View
+    window.onload = () => {
+      switchTab('resume');
+      pingAllAgents();
+    };
+  </script>
+</body>
+</html>

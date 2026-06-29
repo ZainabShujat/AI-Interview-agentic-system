@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
 from routers import resume_router, jd_router, match_router, interview_router, roadmap_router
+from middleware import APIKeyMiddleware
 
 # Initialize database tables
 Base.metadata.create_all(bind=engine)
@@ -22,6 +23,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# API key authentication (disabled when HIREINTEL_API_KEY env var is unset)
+app.add_middleware(APIKeyMiddleware)
 
 # Register Routers
 app.include_router(resume_router.router)
