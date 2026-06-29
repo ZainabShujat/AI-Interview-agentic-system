@@ -8,13 +8,11 @@ import {
   BriefcaseBusiness,
   Building2,
   CheckCircle2,
-  ClipboardCheck,
   FileText,
   Loader2,
   Pencil,
   Sparkles,
   Upload as UploadIcon,
-  Users,
 } from 'lucide-react';
 import { useSession } from '../App';
 
@@ -94,12 +92,8 @@ export default function Upload() {
   const [stage, setStage] = useState(-1);
   const [intake, setIntake] = useState<Intake>(emptyIntake);
   const [jdFile, setJdFile] = useState<File | null>(null);
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [jdIdLocal, setJdIdLocal] = useState<string | null>(null);
-  const [resumeIdLocal, setResumeIdLocal] = useState<string | null>(null);
   const [blueprint, setBlueprint] = useState<Blueprint>(fallbackBlueprint);
-  const [resumeSummary, setResumeSummary] = useState<any>(null);
-  const [matchAnalysis, setMatchAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
@@ -108,22 +102,6 @@ export default function Upload() {
   const intakeComplete = stage >= intakeQuestions.length;
   const totalStages = 12;
   const progress = Math.min(100, Math.round(((stage + 2) / totalStages) * 100));
-
-  const assessmentBlueprint = useMemo(() => {
-    if (matchAnalysis?.assessmentBlueprint) return matchAnalysis.assessmentBlueprint;
-
-    return {
-      modules: [
-        { name: 'Resume Validation', questions: 2, focus: 'Verify claimed ownership and project evidence.' },
-        { name: 'Technical Questions', questions: 3, focus: 'Probe required skills and core delivery depth.' },
-        { name: 'Scenario Questions', questions: 2, focus: 'Evaluate applied judgment in realistic role constraints.' },
-        { name: 'Behavioral Questions', questions: 2, focus: 'Assess collaboration, accountability, and operating style.' },
-        { name: 'Leadership Questions', questions: blueprint.seniority?.toLowerCase().includes('senior') ? 2 : 1, focus: 'Validate mentoring and stakeholder communication.' },
-      ],
-      estimatedDurationMinutes: 40,
-      priorityGaps: matchAnalysis?.missing_skills || [],
-    };
-  }, [blueprint.seniority, matchAnalysis]);
 
   const updateIntake = (value: string) => {
     if (!currentQuestion) return;
@@ -203,72 +181,7 @@ export default function Upload() {
     }
   };
 
-  const uploadResume = async () => {
-    if (!resumeFile) {
-      setError('Upload a candidate resume before running the Resume Agent.');
-      return;
-    }
 
-    setLoading(true);
-    setError('');
-    setStatus('Resume Agent is extracting candidate evidence...');
-    try {
-      const formData = new FormData();
-      formData.append('file', resumeFile);
-      const res = await axios.post('/api/resume', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setResumeIdLocal(res.data.id);
-      setResumeId(res.data.id);
-      setResumeSummary(res.data.parsed);
-      setStage(12);
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Resume Agent could not parse this PDF.');
-    } finally {
-      setLoading(false);
-      setStatus('');
-    }
-  };
-
-  const runMatch = async () => {
-    if (!resumeIdLocal || !jdIdLocal) return;
-    setLoading(true);
-    setError('');
-    setStatus('Computing deterministic match analysis...');
-    try {
-      const res = await axios.post('/api/match', {
-        resume_id: resumeIdLocal,
-        jd_id: jdIdLocal,
-      });
-      setMatchAnalysis(res.data);
-      setStage(13);
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Could not compute match analysis.');
-    } finally {
-      setLoading(false);
-      setStatus('');
-    }
-  };
-
-  const startInterview = async () => {
-    if (!resumeIdLocal || !jdIdLocal) return;
-    setLoading(true);
-    setError('');
-    setStatus('Preparing interview session...');
-    try {
-      const res = await axios.post('/api/interview/start', {
-        resume_id: resumeIdLocal,
-        jd_id: jdIdLocal,
-      });
-      setInterviewId(res.data.id || res.data.interview_id);
-      navigate('/interview');
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Could not start the interview session.');
-    } finally {
-      setLoading(false);
-      setStatus('');
-    }
-  };
 
   const setListField = (key: keyof Blueprint, value: string) => {
     setBlueprint((prev) => ({
@@ -677,254 +590,6 @@ function BlueprintEditor({
         {listField('leadership_expectations', 'Leadership Expectations')}
         {listField('communication_expectations', 'Communication Expectations')}
       </div>
-    </div>
-  );
-}
-
-function ResumeSummary({ summary }: { summary: any }) {
-  if (!summary) {
-    return <p className="text-sm text-theme-secondary">No summary data available.</p>;
-  }
-
-  const links = [
-    summary.linkedin && { label: 'LinkedIn', url: summary.linkedin },
-    summary.github && { label: 'GitHub', url: summary.github },
-    summary.portfolio && { label: 'Portfolio', url: summary.portfolio },
-    summary.website && { label: 'Website', url: summary.website },
-  ].filter(Boolean) as Array<{ label: string; url: string }>;
-
-  return (
-    <div className="space-y-6">
-      {/* Basic Info Card */}
-      <div className="rounded-lg border border-subtle p-5" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
-        <span className="text-[10px] uppercase tracking-widest font-bold text-theme-tertiary block mb-2">Candidate Info</span>
-        <h3 className="text-lg font-bold text-theme-primary">{summary.candidate_name || 'Name not found'}</h3>
-        {summary.headline && <p className="text-sm text-theme-secondary font-medium mt-0.5">{summary.headline}</p>}
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-xs text-theme-secondary">
-          {summary.email && (
-            <div>
-              <span className="font-semibold text-theme-tertiary block">Email</span>
-              <span>{summary.email}</span>
-            </div>
-          )}
-          {summary.phone && (
-            <div>
-              <span className="font-semibold text-theme-tertiary block">Phone</span>
-              <span>{summary.phone}</span>
-            </div>
-          )}
-          {summary.location && (
-            <div>
-              <span className="font-semibold text-theme-tertiary block">Location</span>
-              <span>{summary.location}</span>
-            </div>
-          )}
-        </div>
-
-        {links.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-subtle flex flex-wrap gap-4 text-xs">
-            {links.map((link) => (
-              <a
-                key={link.url}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:underline font-semibold"
-              >
-                {link.label}
-              </a>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Summary Block */}
-      {summary.summary && (
-        <div className="rounded-lg border border-subtle p-5" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
-          <span className="text-[10px] uppercase tracking-widest font-bold text-theme-tertiary block mb-2">Professional Summary</span>
-          <p className="text-sm text-theme-secondary leading-relaxed">{summary.summary}</p>
-        </div>
-      )}
-
-      {/* Skills Group Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <SummaryBlock title="Core Skills" items={summary.skills} />
-        {summary.technical_skills?.length > 0 && (
-          <SummaryBlock title="Technical Skills" items={summary.technical_skills} />
-        )}
-        {summary.programming_languages?.length > 0 && (
-          <SummaryBlock title="Programming Languages" items={summary.programming_languages} />
-        )}
-        {summary.frameworks?.length > 0 && (
-          <SummaryBlock title="Frameworks" items={summary.frameworks} />
-        )}
-        {summary.databases?.length > 0 && (
-          <SummaryBlock title="Databases" items={summary.databases} />
-        )}
-        {summary.cloud_platforms?.length > 0 && (
-          <SummaryBlock title="Cloud Platforms" items={summary.cloud_platforms} />
-        )}
-        {summary.tools?.length > 0 && (
-          <SummaryBlock title="Tools" items={summary.tools} />
-        )}
-        {summary.soft_skills?.length > 0 && (
-          <SummaryBlock title="Soft Skills" items={summary.soft_skills} />
-        )}
-        {summary.certifications?.length > 0 && (
-          <SummaryBlock title="Certifications" items={summary.certifications} />
-        )}
-      </div>
-
-      {/* Projects */}
-      <div className="rounded-lg border border-subtle p-5" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
-        <span className="text-[10px] uppercase tracking-widest font-bold text-theme-tertiary block mb-4">Projects</span>
-        {summary.projects?.length > 0 ? (
-          <div className="space-y-4">
-            {summary.projects.map((project: any, idx: number) => (
-              <div key={idx} className="p-4 rounded-md border border-subtle bg-theme-secondary/20">
-                <div className="flex justify-between items-start">
-                  <h4 className="text-sm font-bold text-theme-primary">{project.title || 'Untitled Project'}</h4>
-                  <div className="flex gap-3 text-xs">
-                    {project.github && (
-                      <a href={project.github} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
-                        GitHub
-                      </a>
-                    )}
-                    {project.demo && (
-                      <a href={project.demo} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
-                        Demo
-                      </a>
-                    )}
-                  </div>
-                </div>
-                {project.description && (
-                  <p className="text-xs text-theme-secondary mt-1">{project.description}</p>
-                )}
-                {project.technologies?.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {project.technologies.map((tech: string, i: number) => (
-                      <span key={i} className="text-[10px] px-2 py-0.5 rounded border" style={{ color: 'var(--color-text-secondary)', borderColor: 'var(--color-border-subtle)', backgroundColor: 'var(--color-bg-secondary)' }}>
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-theme-tertiary">No projects extracted.</p>
-        )}
-      </div>
-
-      {/* Experience */}
-      <div className="rounded-lg border border-subtle p-5" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
-        <span className="text-[10px] uppercase tracking-widest font-bold text-theme-tertiary block mb-4">Work Experience</span>
-        {summary.experience?.length > 0 ? (
-          <div className="space-y-4">
-            {summary.experience.map((exp: any, idx: number) => (
-              <div key={idx} className="p-4 rounded-md border border-subtle bg-theme-secondary/20">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-sm font-bold text-theme-primary">{exp.title || 'Untitled Role'}</h4>
-                    <p className="text-xs text-theme-secondary">{exp.company || 'Unknown Company'} {exp.employment_type ? `• ${exp.employment_type}` : ''}</p>
-                  </div>
-                  {exp.duration && (
-                    <span className="text-xs text-theme-tertiary">{exp.duration}</span>
-                  )}
-                </div>
-                {exp.responsibilities?.length > 0 && (
-                  <ul className="list-disc list-inside text-xs text-theme-secondary mt-2 space-y-1">
-                    {exp.responsibilities.map((resp: string, i: number) => (
-                      <li key={i}>{resp}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-theme-tertiary">No experience extracted.</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MatchSummary({ data }: { data: any }) {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Metric label="Match" value={`${data.matchScore}%`} />
-        <Metric label="Required" value={`${data.calculation?.requiredMatched || 0}/${data.calculation?.requiredTotal || 0}`} />
-        <Metric label="Preferred" value={`${data.calculation?.preferredMatched || 0}/${data.calculation?.preferredTotal || 0}`} />
-        <Metric label="Method" value="Deterministic" />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <SummaryBlock title="Matched Skills" items={data.matched_skills} tone="good" />
-        <SummaryBlock title="Missing Skills" items={data.missing_skills} tone="risk" />
-        <SummaryBlock title="Additional Skills" items={data.additional_skills} />
-      </div>
-      <div className="rounded-lg border border-subtle p-5" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
-        <span className="text-[10px] uppercase tracking-widest font-bold text-theme-tertiary block mb-4">Calculation Logic</span>
-        <p className="text-sm text-theme-secondary">
-          Required skills contribute {data.calculation?.requiredWeight || 70}%, preferred skills contribute {data.calculation?.preferredWeight || 20}%, and domain alignment contributes {data.calculation?.domainWeight || 10}%. The backend compares normalized skill sets from JD JSON and resume JSON.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function AssessmentBlueprint({ blueprint, matchAnalysis }: { blueprint: any; matchAnalysis: any }) {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Metric label="Estimated Duration" value={`${blueprint.estimatedDurationMinutes} min`} />
-        <Metric label="Priority Gaps" value={`${blueprint.priorityGaps?.length || 0}`} />
-        <Metric label="Match Score" value={`${matchAnalysis?.matchScore || 0}%`} />
-      </div>
-      <div className="space-y-3">
-        {(blueprint.modules || []).map((module: any) => (
-          <div key={module.name} className="rounded-lg border border-subtle p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
-            <div>
-              <span className="text-sm font-bold text-theme-primary">{module.name}</span>
-              <p className="text-xs text-theme-secondary mt-1">{module.focus}</p>
-            </div>
-            <span className="text-xs font-bold px-3 py-1 rounded-md border border-blue-500/20 text-blue-400 bg-blue-600/10 flex-shrink-0">
-              {module.questions} questions
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SummaryBlock({ title, items, tone }: { title: string; items?: string[]; tone?: 'good' | 'risk' }) {
-  const color = tone === 'good' ? 'var(--color-accent-teal)' : tone === 'risk' ? 'var(--color-accent-coral)' : 'var(--color-text-secondary)';
-
-  return (
-    <div className="rounded-lg border border-subtle p-5" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
-      <span className="text-[10px] uppercase tracking-widest font-bold text-theme-tertiary block mb-3">{title}</span>
-      <div className="flex flex-wrap gap-2">
-        {items && items.length ? items.map((item, index) => (
-          <span key={`${item}-${index}`} className="text-xs px-2.5 py-1 rounded-md border" style={{ color, borderColor: 'var(--color-border-subtle)', backgroundColor: 'var(--color-bg-secondary)' }}>
-            {item}
-          </span>
-        )) : (
-          <span className="text-xs text-theme-tertiary">No evidence extracted.</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-subtle p-4" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
-      <span className="text-[10px] uppercase tracking-widest font-bold text-theme-tertiary block mb-1">{label}</span>
-      <span className="text-xl font-bold text-theme-primary">{value}</span>
     </div>
   );
 }

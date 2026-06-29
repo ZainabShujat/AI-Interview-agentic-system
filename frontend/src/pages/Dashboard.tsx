@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
   Users, Award, CheckSquare, Target, BarChart3, Compass, Settings, 
-  Search, Plus, ArrowUpRight, TrendingUp, Link as LinkIcon
+  Search, Plus, ArrowUpRight, TrendingUp
 } from 'lucide-react';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, XAxis, 
@@ -397,9 +397,6 @@ export default function Dashboard() {
                       {candidatesList
                         .filter(c => c.candidate_name.toLowerCase().includes(searchQuery.toLowerCase()) || c.job_title.toLowerCase().includes(searchQuery.toLowerCase()))
                         .map((cand, idx) => {
-                          const tag = cand.score >= 85 ? 'Strong Hire' : cand.score >= 70 ? 'Consider' : 'Needs Prep';
-                          const color = cand.score >= 85 ? 'var(--color-accent-teal)' : cand.score >= 70 ? 'rgb(251, 191, 36)' : 'var(--color-accent-coral)';
-                          const bg = cand.score >= 85 ? 'rgba(45, 212, 191, 0.08)' : cand.score >= 70 ? 'rgba(251, 191, 36, 0.08)' : 'rgba(251, 113, 133, 0.08)';
                           const isCompleted = cand.status === 'Completed';
 
                           return (
