@@ -51,3 +51,7 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Agent shares and archives
+agentshare*/
+*.zip
