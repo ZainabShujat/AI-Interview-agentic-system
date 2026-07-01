@@ -8,6 +8,9 @@ from database import get_db
 import models
 import schemas
 from services import gemini_service
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/resume", tags=["resume"])
 
@@ -110,9 +113,17 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
                         "fallback": False
                     }
                 }
-
-        # 3. Parse text using Gemini Resume Agent (handles local extraction, LLM parsing, and DB caching)
+        # 3. Parse text using Gemini Resume Agent (handles local extraction, LLM parsing)
         parsed_data = gemini_service.parse_resume(raw_text, filename=file.filename)
+        
+        # Write to ResumeCache (decoupled from the Resume Agent)
+        try:
+            db_cache = models.ResumeCache(raw_text_hash=resume_hash, parsed_json=parsed_data)
+            db.add(db_cache)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logger.warning(f"Failed to write to ResumeCache: {e}")
         
         # 4. Fetch or insert the Resume entity record for relational mapping
         db_resume = db.query(models.Resume).filter(models.Resume.raw_text == raw_text).first()

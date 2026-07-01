@@ -11,6 +11,8 @@ import Interview from './pages/Interview';
 import Report from './pages/Report';
 import JobLeaderboard from './pages/JobLeaderboard';
 import Login from './pages/Login';
+import AuthCallback from './pages/AuthCallback';
+import { AuthProvider, useAuth } from './AuthContext';
 
 // Define a simple context to store session/upload data
 interface SessionContextType {
@@ -32,38 +34,56 @@ export function useSession() {
   return context;
 }
 
-// Role guard wrappers
+// Role guard wrappers — now use AuthContext for real auth, with localStorage fallback
 function RecruiterRoute({ children }: { children: React.ReactNode }) {
-  const role = localStorage.getItem('user_role');
-  if (!role) {
+  const { user, role, loading } = useAuth();
+
+  if (loading) return null; // Wait for auth state to resolve
+
+  // Check for real Supabase auth first, fall back to localStorage for backward compat
+  const isAuthenticated = !!user || !!localStorage.getItem('user_role');
+  const effectiveRole = role || localStorage.getItem('user_role');
+
+  if (!isAuthenticated) {
     return <Navigate to="/login?role=recruiter" replace />;
   }
-  if (role !== 'recruiter') {
+  if (effectiveRole !== 'recruiter') {
     return <Navigate to="/student" replace />;
   }
   return <>{children}</>;
 }
 
 function StudentRoute({ children }: { children: React.ReactNode }) {
-  const role = localStorage.getItem('user_role');
-  if (!role) {
+  const { user, role, loading } = useAuth();
+
+  if (loading) return null;
+
+  const isAuthenticated = !!user || !!localStorage.getItem('user_role');
+  const effectiveRole = role || localStorage.getItem('user_role');
+
+  if (!isAuthenticated) {
     return <Navigate to="/login?role=student" replace />;
   }
-  if (role !== 'student') {
+  if (effectiveRole !== 'student') {
     return <Navigate to="/recruiter" replace />;
   }
   return <>{children}</>;
 }
 
 function CommonRoute({ children }: { children: React.ReactNode }) {
-  const role = localStorage.getItem('user_role');
-  if (!role) {
+  const { user, loading } = useAuth();
+
+  if (loading) return null;
+
+  const isAuthenticated = !!user || !!localStorage.getItem('user_role');
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
   return <>{children}</>;
 }
 
-export default function App() {
+function AppRoutes() {
   const [resumeId, setResumeId] = useState<string | null>(null);
   const [jdId, setJdId] = useState<string | null>(null);
   const [interviewId, setInterviewId] = useState<string | null>(null);
@@ -77,6 +97,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               
               {/* Student Portal Routes */}
               <Route path="/student" element={<StudentRoute><StudentAssessment /></StudentRoute>} />
@@ -103,5 +124,13 @@ export default function App() {
         </div>
       </Router>
     </SessionContext.Provider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 }

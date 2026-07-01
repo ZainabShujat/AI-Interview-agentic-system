@@ -305,6 +305,17 @@
     let currentResponseView = 'json'; // 'json' or 'preview'
     let lastFetchedResponse = null;
 
+    // Per-tab output cache: stores the last response for each agent tab
+    const tabOutputs = {
+      resume:    { code: null, data: null, latency: 0, responseView: 'json' },
+      jd:        { code: null, data: null, latency: 0, responseView: 'json' },
+      match:     { code: null, data: null, latency: 0, responseView: 'json' },
+      interview: { code: null, data: null, latency: 0, responseView: 'json' },
+      judge:     { code: null, data: null, latency: 0, responseView: 'json' },
+      roadmap:   { code: null, data: null, latency: 0, responseView: 'json' },
+      report:    { code: null, data: null, latency: 0, responseView: 'json' }
+    };
+
     // Templates for various tabs
     const templates = {
       resume: ``, // PDF file upload
@@ -594,6 +605,11 @@ Requirements:
 
     // Switch Tab Control
     function switchTab(tabId) {
+      // Save current tab's response view preference before switching
+      if (tabOutputs[activeTabId]) {
+        tabOutputs[activeTabId].responseView = currentResponseView;
+      }
+
       // Remove active design from old tab
       document.getElementById(`tab-btn-${activeTabId}`).classList.remove('border-indigo-500', 'bg-white/5');
       
@@ -628,8 +644,55 @@ Requirements:
 
       renderRequestInputs();
       
-      // Reset view to JSON view
-      setResponseView('json');
+      // Restore cached output for this tab (or show idle state)
+      const cached = tabOutputs[tabId];
+      if (cached && cached.data !== null) {
+        lastFetchedResponse = cached.data;
+        restoreResponsePanel(cached);
+        setResponseView(cached.responseView || 'json');
+      } else {
+        lastFetchedResponse = null;
+        resetResponsePanel();
+        setResponseView('json');
+      }
+    }
+
+    // Restore the response panel from a cached tab output
+    function restoreResponsePanel(cached) {
+      const responseArea = document.getElementById('raw-response');
+      const codeBadge = document.getElementById('response-code');
+      const latencyEl = document.getElementById('api-latency');
+
+      responseArea.value = typeof cached.data === 'string' ? cached.data : JSON.stringify(cached.data, null, 2);
+      codeBadge.innerText = cached.code;
+      latencyEl.innerText = `Time: ${cached.latency} ms`;
+
+      if (cached.code >= 200 && cached.code < 300) {
+        codeBadge.className = "text-[10px] px-2 py-0.5 rounded border border-emerald-500/20 text-emerald-400 bg-emerald-500/10 font-bold";
+      } else if (cached.code >= 400) {
+        codeBadge.className = "text-[10px] px-2 py-0.5 rounded border border-rose-500/20 text-rose-400 bg-rose-500/10 font-bold";
+      } else {
+        codeBadge.className = "text-[10px] px-2 py-0.5 rounded border border-slate-800 text-slate-400 bg-slate-900 font-bold";
+      }
+
+      renderVisualPreview(activeTabId, cached.data, cached.latency);
+    }
+
+    // Reset the response panel to idle state
+    function resetResponsePanel() {
+      const responseArea = document.getElementById('raw-response');
+      const codeBadge = document.getElementById('response-code');
+      const latencyEl = document.getElementById('api-latency');
+
+      responseArea.value = '';
+      responseArea.placeholder = "Click 'Run Playground Test' to see the agent response...";
+      codeBadge.innerText = 'Idle';
+      codeBadge.className = "text-[10px] px-2 py-0.5 rounded border border-slate-800 text-slate-400 bg-slate-900 font-bold";
+      latencyEl.innerText = 'Time: -- ms';
+
+      document.getElementById('visual-preview-container').innerHTML = `
+        <div class="text-center py-10 text-xs text-slate-500">No active parsed data to visualize. Execute a playground test first.</div>
+      `;
     }
 
     // File name update helper
@@ -666,6 +729,12 @@ Requirements:
     // Toggle Response Panel view (JSON vs visual preview)
     function setResponseView(view) {
       currentResponseView = view;
+
+      // Persist view preference for the active tab
+      if (tabOutputs[activeTabId]) {
+        tabOutputs[activeTabId].responseView = view;
+      }
+
       const jsonArea = document.getElementById('raw-response');
       const previewArea = document.getElementById('visual-preview-container');
       const btnJson = document.getElementById('btn-show-json');
@@ -681,7 +750,8 @@ Requirements:
         previewArea.classList.remove('hidden');
         btnJson.className = "text-xs font-bold text-slate-400 hover:text-white pb-0.5 focus:outline-none";
         btnPreview.className = "text-xs font-bold text-white border-b-2 border-teal-400 pb-0.5 focus:outline-none";
-        renderVisualPreview(activeTabId, lastFetchedResponse);
+        const cachedLatency = tabOutputs[activeTabId] ? tabOutputs[activeTabId].latency : 0;
+        renderVisualPreview(activeTabId, lastFetchedResponse, cachedLatency);
       }
     }
 
@@ -1382,9 +1452,18 @@ Requirements:
       }
     }
 
-    // Display formatted response JSON
+    // Display formatted response JSON and cache it per-tab
     function displayResponse(code, data, latency) {
       lastFetchedResponse = data;
+
+      // Cache the output for the active tab
+      if (tabOutputs[activeTabId]) {
+        tabOutputs[activeTabId].code = code;
+        tabOutputs[activeTabId].data = data;
+        tabOutputs[activeTabId].latency = latency;
+        tabOutputs[activeTabId].responseView = currentResponseView;
+      }
+
       document.getElementById('response-code').innerText = code;
       
       const responseArea = document.getElementById('raw-response');
