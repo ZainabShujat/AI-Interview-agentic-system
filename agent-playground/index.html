@@ -54,8 +54,77 @@
     }
   </style>
 </head>
-<body class="min-h-screen py-10 px-5 md:px-12 flex flex-col justify-between">
+<body class="min-h-screen py-10 px-5 md:px-12 flex flex-col justify-between overflow-x-hidden">
 
+  <!-- Landing Page Overlay -->
+  <div id="landing-page" class="w-full flex flex-col items-center justify-center flex-grow text-center max-w-5xl mx-auto z-50">
+    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-teal-500/30 bg-teal-500/10 text-teal-400 text-xs font-bold tracking-widest uppercase mb-6 shadow-[0_0_15px_rgba(45,212,191,0.2)]">
+      <span>AI Agent Framework</span>
+    </div>
+    
+    <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-white font-sans mb-6 drop-shadow-2xl">
+      HireIntel <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-teal-400">Recruiting Journey</span>
+    </h1>
+    
+    <p class="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed mb-16">
+      Experience how our specialized AI agents work together to read resumes, understand complex job requirements, and instantly compute candidate readiness.
+    </p>
+
+    <!-- The 3 Steps Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mb-16">
+      <!-- Step 1 -->
+      <div class="glass-card p-8 rounded-2xl border border-slate-800/80 hover:border-indigo-500/50 transition-all duration-300 transform hover:-translate-y-2 relative overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-br from-indigo-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div class="w-14 h-14 rounded-2xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 mb-6 mx-auto shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-3">1. Resume Parsing</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Extracts structured data from messy PDFs, normalizing skills, experience, and domains into clean JSON profiles.</p>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="glass-card p-8 rounded-2xl border border-slate-800/80 hover:border-purple-500/50 transition-all duration-300 transform hover:-translate-y-2 relative overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div class="w-14 h-14 rounded-2xl bg-purple-500/20 flex items-center justify-center text-purple-400 mb-6 mx-auto shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-3">2. JD Parsing</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Transforms raw job descriptions into precise technical requirements, identifying must-have skills and seniority levels.</p>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="glass-card p-8 rounded-2xl border border-slate-800/80 hover:border-teal-500/50 transition-all duration-300 transform hover:-translate-y-2 relative overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-br from-teal-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div class="w-14 h-14 rounded-2xl bg-teal-500/20 flex items-center justify-center text-teal-400 mb-6 mx-auto shadow-[0_0_15px_rgba(45,212,191,0.3)]">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+          </svg>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-3">3. Readiness Match</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Computes alignment between the parsed candidate and the job schema, instantly identifying gaps and overall fit.</p>
+      </div>
+    </div>
+
+    <button 
+      onclick="enterPlayground()" 
+      class="group relative px-8 py-4 bg-white text-slate-900 font-extrabold rounded-full overflow-hidden shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_rgba(255,255,255,0.5)] transition-all transform hover:scale-105"
+    >
+      <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-indigo-200 via-purple-200 to-teal-200 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      <span class="relative flex items-center gap-2">
+        Try it out
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        </svg>
+      </span>
+    </button>
+  </div>
+
+  <!-- Main Playground Console Wrapper -->
+  <div id="playground-console" class="hidden w-full flex-col justify-between flex-grow">
   <!-- Header Section -->
   <header class="max-w-7xl w-full mx-auto mb-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-slate-800 pb-8">
     <div>
@@ -63,18 +132,21 @@
         <span>AI Agent Sandbox</span>
       </div>
       <h1 class="text-4xl font-extrabold tracking-tight text-white font-sans">
-        Agent Playground
+        AI Recruiting Journey: See How AI Thinks
       </h1>
       <p class="text-sm text-slate-400 mt-2 max-w-2xl leading-relaxed">
-        Test and validate each of HireIntel's modular backend AI agents individually in a Postman-style split console. Paste requests, execute tests, and inspect raw responses.
+        Follow the journey of an AI recruiter evaluating a candidate, step-by-step from resume parsing to final verdict.
       </p>
     </div>
 
     <!-- API Base Endpoint Configurator -->
-    <div class="glass-card p-5 rounded-xl flex flex-col gap-3.5 w-full md:w-auto">
-      <span class="text-[10px] uppercase tracking-widest font-bold text-slate-400 block border-b border-slate-800 pb-1.5">API Server Endpoint Selector</span>
+    <details class="glass-card p-5 rounded-xl flex flex-col gap-3.5 w-full md:w-auto group">
+      <summary class="text-[10px] uppercase tracking-widest font-bold text-slate-400 border-b border-slate-800 pb-1.5 cursor-pointer list-none flex justify-between items-center">
+        <span>Developer Settings</span>
+        <span class="text-xs group-open:rotate-180 transition-transform">▼</span>
+      </summary>
       
-      <div class="flex flex-wrap gap-4 text-xs font-semibold">
+      <div class="flex flex-wrap gap-4 text-xs font-semibold mt-3">
         <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
           <input type="radio" name="endpoint-select" value="prod" checked onchange="updateBaseUrlSelect()" class="text-indigo-600 focus:ring-0" />
           <span>Production Staging</span>
@@ -107,7 +179,7 @@
           Check Health
         </button>
       </div>
-    </div>
+    </details>
   </header>
 
   <!-- Main Split Console Area -->
@@ -121,7 +193,7 @@
           onclick="switchTab('resume')" 
           class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
         >
-          <span class="text-sm font-bold text-white block">Resume Intelligence</span>
+          <span class="text-sm font-bold text-white block">Step 1: Meet the Candidate</span>
           <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Parse PDF resumes & structure candidate profiles.</span>
         </button>
 
@@ -130,7 +202,7 @@
           onclick="switchTab('jd')" 
           class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
         >
-          <span class="text-sm font-bold text-white block">JD Intelligence</span>
+          <span class="text-sm font-bold text-white block">Step 2: Understand the Role</span>
           <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Extract job roles into structured blueprints.</span>
         </button>
 
@@ -139,43 +211,51 @@
           onclick="switchTab('match')" 
           class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
         >
-          <span class="text-sm font-bold text-white block">Readiness Match</span>
+          <span class="text-sm font-bold text-white block">Step 3: Analyze the Fit</span>
           <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Compute fit between raw resume & JD JSON schemas.</span>
         </button>
 
         <button 
           id="tab-btn-interview"
-          onclick="switchTab('interview')" 
-          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card opacity-40 cursor-not-allowed pointer-events-none grayscale"
         >
-          <span class="text-sm font-bold text-white block">Interview</span>
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-white block">Step 4: AI Interview Simulation</span>
+            <span class="text-[8px] uppercase tracking-wider text-slate-500 font-bold bg-slate-900/50 px-1.5 py-0.5 rounded border border-slate-800">Coming Soon</span>
+          </div>
           <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Simulate adaptive questions & voice tracking queues.</span>
         </button>
 
         <button 
           id="tab-btn-judge"
-          onclick="switchTab('judge')" 
-          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card opacity-40 cursor-not-allowed pointer-events-none grayscale"
         >
-          <span class="text-sm font-bold text-white block">Judge</span>
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-white block">Step 5: Judge the Responses</span>
+            <span class="text-[8px] uppercase tracking-wider text-slate-500 font-bold bg-slate-900/50 px-1.5 py-0.5 rounded border border-slate-800">Coming Soon</span>
+          </div>
           <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Evaluate transcript answers against category rubrics.</span>
         </button>
 
         <button 
           id="tab-btn-roadmap"
-          onclick="switchTab('roadmap')" 
-          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card opacity-40 cursor-not-allowed pointer-events-none grayscale"
         >
-          <span class="text-sm font-bold text-white block">Career Intelligence</span>
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-white block">Step 6: Career Roadmap</span>
+            <span class="text-[8px] uppercase tracking-wider text-slate-500 font-bold bg-slate-900/50 px-1.5 py-0.5 rounded border border-slate-800">Coming Soon</span>
+          </div>
           <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Map personalized roadmap targets & success paths.</span>
         </button>
 
         <button 
           id="tab-btn-report"
-          onclick="switchTab('report')" 
-          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card"
+          class="w-full text-left p-4 rounded-xl border transition-all duration-200 glass-card opacity-40 cursor-not-allowed pointer-events-none grayscale"
         >
-          <span class="text-sm font-bold text-white block">Report</span>
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-white block">Step 7: Final Report</span>
+            <span class="text-[8px] uppercase tracking-wider text-slate-500 font-bold bg-slate-900/50 px-1.5 py-0.5 rounded border border-slate-800">Coming Soon</span>
+          </div>
           <span class="text-[11px] text-slate-400 mt-1 block leading-relaxed">Generate final evaluation insights & readiness metrics.</span>
         </button>
       </nav>
@@ -206,7 +286,7 @@
         <div class="flex flex-col h-full space-y-4 border-slate-800">
           <div class="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
-              <span class="text-[10px] uppercase font-bold tracking-widest text-indigo-400 block">Input Console</span>
+              <span class="text-[10px] uppercase font-bold tracking-widest text-indigo-400 block">Action Panel</span>
               <h2 class="text-lg font-bold text-white font-sans mt-0.5" id="active-tab-title">Resume Intelligence</h2>
             </div>
             <span class="text-[10px] px-2 py-0.5 rounded border border-indigo-500/20 text-indigo-400 bg-indigo-600/10 font-bold" id="active-endpoint">
@@ -239,9 +319,9 @@
             <div>
               <span class="text-[10px] uppercase font-bold tracking-widest text-teal-400 block">Output Response</span>
               <div class="flex items-center gap-2 mt-0.5">
-                <button id="btn-show-json" onclick="setResponseView('json')" class="text-xs font-bold text-white border-b-2 border-teal-400 pb-0.5 focus:outline-none">JSON payload</button>
+                <button id="btn-show-preview" onclick="setResponseView('preview')" class="text-xs font-bold text-white border-b-2 border-teal-400 pb-0.5 focus:outline-none">Story View</button>
                 <span class="text-slate-600 text-xs">|</span>
-                <button id="btn-show-preview" onclick="setResponseView('preview')" class="text-xs font-bold text-slate-400 hover:text-white pb-0.5 focus:outline-none">Visual Preview</button>
+                <button id="btn-show-json" onclick="setResponseView('json')" class="text-xs font-bold text-slate-400 hover:text-white pb-0.5 focus:outline-none">Developer JSON</button>
               </div>
             </div>
             <span id="response-code" class="text-[10px] px-2 py-0.5 rounded border border-slate-800 text-slate-400 bg-slate-900 font-bold">
@@ -298,22 +378,46 @@
       <a href="/student" class="hover:underline">Student Path</a>
     </div>
   </footer>
+  </div>
 
   <!-- Playground Scripts -->
   <script>
     let activeTabId = 'resume';
-    let currentResponseView = 'json'; // 'json' or 'preview'
+    let currentResponseView = 'preview'; // 'json' or 'preview'
     let lastFetchedResponse = null;
+
+    function enterPlayground() {
+      const landingPage = document.getElementById('landing-page');
+      const playgroundConsole = document.getElementById('playground-console');
+      
+      // Add slight fade out effect
+      landingPage.style.opacity = '0';
+      landingPage.style.transition = 'opacity 0.4s ease';
+      
+      setTimeout(() => {
+        landingPage.classList.add('hidden');
+        landingPage.classList.remove('flex'); // remove flex to completely hide
+        playgroundConsole.classList.remove('hidden');
+        playgroundConsole.classList.add('flex');
+        
+        // Add fade in
+        playgroundConsole.style.opacity = '0';
+        playgroundConsole.style.transition = 'opacity 0.4s ease';
+        setTimeout(() => {
+          playgroundConsole.style.opacity = '1';
+        }, 50);
+      }, 400);
+    }
 
     // Per-tab output cache: stores the last response for each agent tab
     const tabOutputs = {
-      resume:    { code: null, data: null, latency: 0, responseView: 'json' },
-      jd:        { code: null, data: null, latency: 0, responseView: 'json' },
-      match:     { code: null, data: null, latency: 0, responseView: 'json' },
-      interview: { code: null, data: null, latency: 0, responseView: 'json' },
-      judge:     { code: null, data: null, latency: 0, responseView: 'json' },
-      roadmap:   { code: null, data: null, latency: 0, responseView: 'json' },
-      report:    { code: null, data: null, latency: 0, responseView: 'json' }
+      resume:    { code: null, data: null, latency: 0, responseView: 'preview' },
+      jd:        { code: null, data: null, latency: 0, responseView: 'preview' },
+      match:     { code: null, data: null, latency: 0, responseView: 'preview' },
+      interview: { code: null, data: null, latency: 0, responseView: 'preview' },
+      judge:     { code: null, data: null, latency: 0, responseView: 'preview' },
+      roadmap:   { code: null, data: null, latency: 0, responseView: 'preview' },
+      report:    { code: null, data: null, latency: 0, responseView: 'preview' }
     };
 
     // Templates for various tabs
@@ -621,13 +725,13 @@ Requirements:
 
       // Update UI title and endpoint fields
       const titles = {
-        resume: ['Resume Intelligence', 'POST /api/resume', 'Tests binary PDF uploads & clean text extraction.'],
-        jd: ['JD Intelligence', 'POST /api/jd', 'Extracts structured blueprints from raw JDs.'],
-        match: ['Readiness Match', 'POST /api/match/raw', 'Evaluates alignments from direct JSON inputs.'],
-        interview: ['Interview Simulation', 'POST /api/interview/start', 'Simulates dynamic questions and answers.'],
-        judge: ['Judge Agent', 'POST /api/interview/judge', 'Evaluates answer transcripts against criteria.'],
-        roadmap: ['Career Intelligence', 'POST /api/roadmap', 'Formulates learning pathways, project specifications, and resume checkpoints.'],
-        report: ['Report Agent', 'POST /api/interview/report/raw', 'Compiles QA history & memory into report summaries.']
+        resume: ['Step 1: Meet the Candidate', 'POST /api/resume', 'Tests binary PDF uploads & clean text extraction.'],
+        jd: ['Step 2: Understand the Role', 'POST /api/jd', 'Extracts structured blueprints from raw JDs.'],
+        match: ['Step 3: Analyze the Fit', 'POST /api/match/raw', 'Evaluates alignments from direct JSON inputs.'],
+        interview: ['Step 4: AI Interview Simulation', 'POST /api/interview/start', 'Simulates dynamic questions and answers.'],
+        judge: ['Step 5: Judge the Responses', 'POST /api/interview/judge', 'Evaluates answer transcripts against criteria.'],
+        roadmap: ['Step 6: Career Roadmap', 'POST /api/roadmap', 'Formulates learning pathways, project specifications, and resume checkpoints.'],
+        report: ['Step 7: Final Report', 'POST /api/interview/report/raw', 'Compiles QA history & memory into report summaries.']
       };
 
       document.getElementById('active-tab-title').innerText = titles[tabId][0];
@@ -649,11 +753,16 @@ Requirements:
       if (cached && cached.data !== null) {
         lastFetchedResponse = cached.data;
         restoreResponsePanel(cached);
-        setResponseView(cached.responseView || 'json');
+        setResponseView(cached.responseView || 'preview');
       } else {
         lastFetchedResponse = null;
         resetResponsePanel();
-        setResponseView('json');
+        setResponseView('preview');
+      }
+
+      // Auto-run match if IDs are present and we switch to match tab
+      if (tabId === 'match' && lastResumeDbId && lastJdDbId && (!cached || cached.data === null)) {
+         setTimeout(runActiveAgentTest, 150);
       }
     }
 
