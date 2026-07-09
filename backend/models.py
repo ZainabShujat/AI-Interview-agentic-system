@@ -41,6 +41,7 @@ class Interview(Base):
     resume_id = Column(String(36), ForeignKey("resumes.id"), nullable=False)
     jd_id = Column(String(36), ForeignKey("jds.id"), nullable=False)
     status = Column(String(20), default="active") # active, completed
+    workflow_state = Column(String(50), default="PENDING") # PENDING, MATCHED, INTERVIEWING, JUDGED, QUALIFIED, SCHEDULING, SCHEDULED, COMPLETED
     current_question_index = Column(Integer, default=0)
     difficulty_level = Column(String(20), default="Medium") # Easy, Medium, Hard
     category_roadmap = Column(JSON, nullable=True) # Question distribution
@@ -51,6 +52,9 @@ class Interview(Base):
     jd = relationship("JobDescription", back_populates="interviews")
     answers = relationship("Answer", back_populates="interview", cascade="all, delete-orphan")
     report = relationship("Report", back_populates="interview", uselist=False, cascade="all, delete-orphan")
+    slots = relationship("InterviewSlot", back_populates="interview", cascade="all, delete-orphan")
+    meeting = relationship("Meeting", back_populates="interview", uselist=False, cascade="all, delete-orphan")
+    audit_logs = relationship("AuditLog", back_populates="interview", cascade="all, delete-orphan")
 
 class Answer(Base):
     __tablename__ = "answers"
@@ -83,3 +87,40 @@ class ResumeCache(Base):
     raw_text_hash = Column(String(64), unique=True, index=True, nullable=False)
     parsed_json = Column(JSON, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class InterviewSlot(Base):
+    __tablename__ = "interview_slots"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    interview_id = Column(String(36), ForeignKey("interviews.id"), nullable=False)
+    role = Column(String(20), nullable=False) # 'candidate' or 'recruiter'
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    end_time = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    interview = relationship("Interview", back_populates="slots")
+
+class Meeting(Base):
+    __tablename__ = "meetings"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    interview_id = Column(String(36), ForeignKey("interviews.id"), nullable=False, unique=True)
+    meeting_id = Column(String(100), nullable=False)
+    join_url = Column(Text, nullable=False)
+    password = Column(String(100), nullable=True)
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    interview = relationship("Interview", back_populates="meeting")
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    interview_id = Column(String(36), ForeignKey("interviews.id"), nullable=False)
+    action = Column(String(255), nullable=False)
+    details = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    interview = relationship("Interview", back_populates="audit_logs")
+

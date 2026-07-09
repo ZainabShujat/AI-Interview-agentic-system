@@ -24,18 +24,35 @@ Recruiters create role blueprints, parse candidates, run adaptive interviews, ra
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## AI Agents
+## AI Agents & Workflow
 
-| Agent | What it does | Endpoint |
-|-------|-------------|----------|
-| **Resume Intelligence** | Extracts candidate metadata, skills, experience, projects from PDF/DOCX/TXT | `POST /api/resume` |
-| **JD Intelligence** | Parses job descriptions into structured hiring blueprints | `POST /api/jd` |
-| **Readiness Match** | Deterministic skill-gap analysis with explainable justifications | `POST /api/match` |
-| **Interview Planner** | Plans category roadmap (Technical → Scenario → Behavioral → Leadership) | `POST /api/interview/start` |
-| **Adaptive Interview** | Generates follow-up questions based on previous answers, difficulty adapts | `POST /api/interview/answer` |
-| **Judge** | Evaluates answers for accuracy, depth, communication, problem-solving | `POST /api/interview/judge` |
-| **Report** | Compiles performance report with scores, recommendations, and transcripts | `GET /api/interview/report` |
-| **Career Roadmap** | Generates personalized skill development plans | `POST /api/roadmap` |
+The platform operates through an orchestrated network of specialized AI agents, categorized into four distinct modules (`Organized-Agents/`):
+
+### 1. Pre-Interview Screening (`1_Pre_Interview_Screening/`)
+- **Resume Agent (`resume_agent.py`)**: Extracts candidate metadata, skills, experience, and projects from uploaded files (PDF/DOCX/TXT).
+- **JD Agent (`jd_agent.py`)**: Parses job descriptions and converts them into structured hiring blueprints, isolating required skills, experience levels, and core competencies.
+- **Match Agent (`match_agent.py`)**: Takes the outputs from the Resume and JD agents to perform a deterministic skill-gap analysis, providing explainable justifications (matched vs. gaps) to assess candidate readiness.
+
+### 2. Evaluation and Reporting (`2_Evaluation_and_Reporting/`)
+- **Judge Agent (`judge_agent.py`)**: Evaluates the candidate's answers in real-time or post-interview, scoring them on accuracy, depth, communication, and problem-solving.
+- **Report Agent (`report_agent.py`)**: Aggregates the evaluations from the Judge Agent to compile a comprehensive performance report, including scores, visual charts, transcript reviews, and a final Hire/No Hire recommendation.
+
+### 3. Planning and Roadmap (`3_Planning_and_Roadmap/`)
+- **Planner Agent (`planner_agent.py`)**: Acts as the interview architect. It uses the JD blueprint to map out a structured category roadmap (e.g., Technical → Scenario → Behavioral → Leadership) before the interview begins.
+- **Roadmap Agent (`roadmap_agent.py`)**: Used primarily for students and candidates to generate a personalized career and skill development plan based on their readiness gaps.
+
+### 4. Full Automated Interviewer (`4_Full_Automated_Interviewer/`)
+- **Gemini Core (`gemini_core.py`)**: The central intelligence engine that interfaces with the Google Gemini API, powering the reasoning capabilities of all other agents.
+- **Memory Agent (`memory_agent.py`)**: Tracks the state of the interview, keeping a record of demonstrated strengths, weak areas, and previous answers to provide context for follow-up questions.
+- **Interview Agent (`interview_agent.py`)**: The dynamic host of the interview. It reads the Planner's roadmap and Memory's context to generate adaptive questions and follow-ups. It integrates with external tools (like Zoom for meeting creation and Gmail for automated email dispatch) to run a fully autonomous, end-to-end interview experience.
+
+### How They Link Together:
+1. **Intake**: A recruiter uploads a JD and a Resume. The **JD Agent** and **Resume Agent** parse the documents.
+2. **Screening**: The **Match Agent** evaluates the parsed data to determine if the candidate meets the baseline requirements.
+3. **Preparation**: If approved, the **Planner Agent** outlines an interview structure based on the JD.
+4. **Execution**: The **Interview Agent** conducts the interview (via Zoom/Gmail integration), while the **Memory Agent** tracks the flow.
+5. **Grading**: The **Judge Agent** evaluates each response provided to the Interview Agent.
+6. **Finalization**: The **Report Agent** compiles the Judge's scores into a final diagnostic PDF report for the recruiter.
 
 ## Project Structure
 

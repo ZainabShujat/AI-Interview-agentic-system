@@ -137,3 +137,14 @@ class RoadmapRequest(BaseModel):
     target_company: Optional[str] = None
     target_jd: Optional[Dict[str, Any]] = None
 
+class SlotSubmitRequest(BaseModel):
+    interview_id: str
+    role: str # 'candidate' or 'recruiter'
+    slots: List[Dict[str, str]] # [{'start_time': 'iso_string', 'end_time': 'iso_string'}]
+
+class SchedulingResponse(BaseModel):
+    success: bool
+    message: str
+    meeting_id: Optional[str] = None
+    join_url: Optional[str] = None
+    start_time: Optional[str] = None

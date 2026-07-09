@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HireIntel - Corporate Workflow Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; color: #111827; }
+        .dark { background-color: #0a0a0a; color: #f9fafb; }
+        .card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .dark .card { background: #171717; border-color: #404040; }
+        .btn { background: black; color: white; padding: 10px 20px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .btn:hover { background: #374151; }
+        .dark .btn { background: white; color: black; }
+        .dark .btn:hover { background: #e5e5e5; }
+        input, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #d1d5db; border-radius: 6px; background: transparent; }
+        .dark input, .dark textarea { border-color: #525252; color: white; }
+    </style>
+</head>
+<body class="p-8 max-w-4xl mx-auto dark">
+    <h1 class="text-3xl font-bold mb-8">HireIntel Workflow Orchestrator</h1>
+    
+    <div class="card mb-8">
+        <h2 class="text-xl font-bold mb-4">1. Setup</h2>
+        <label>Recruiter Email</label>
+        <input type="email" id="recruiter_email" placeholder="recruiter@company.com" value="recruiter@example.com" class="mb-4">
+        
+        <label>Candidate Email</label>
+        <input type="email" id="candidate_email" placeholder="student@university.edu" value="candidate@example.com" class="mb-4">
+    </div>
+
+    <div class="card mb-8">
+        <h2 class="text-xl font-bold mb-4">2. Upload JD & Resume</h2>
+        <textarea id="jd" rows="4" placeholder="Paste Job Description..." class="mb-4">Senior Software Engineer...</textarea>
+        <textarea id="resume" rows="4" placeholder="Paste Resume..." class="mb-4">John Doe - Software Engineer...</textarea>
+        <button class="btn w-full" onclick="startWorkflow()">Start End-to-End Workflow</button>
+    </div>
+
+    <div class="card mb-8 hidden" id="status_card">
+        <h2 class="text-xl font-bold mb-4">Workflow Status</h2>
+        <div id="timeline" class="space-y-4">
+            <!-- Timeline items will be injected here -->
+        </div>
+    </div>
+
+    <script>
+        // Mock functions for demonstration. In reality, these would call the backend APIs.
+        async function startWorkflow() {
+            const statusCard = document.getElementById('status_card');
+            const timeline = document.getElementById('timeline');
+            statusCard.classList.remove('hidden');
+            timeline.innerHTML = '';
+            
+            const addLog = (text, delay) => {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        const el = document.createElement('div');
+                        el.className = "flex items-center gap-4";
+                        el.innerHTML = `<span class="text-green-500 font-bold">✓</span> <span>${text}</span>`;
+                        timeline.appendChild(el);
+                        resolve();
+                    }, delay);
+                });
+            };
+
+            await addLog("Parsing Job Description...", 1000);
+            await addLog("Parsing Resume...", 1500);
+            await addLog("Readiness Match Completed: 85%", 2000);
+            await addLog("AI Interview Generated & Simulated...", 3000);
+            await addLog("Judge Agent Evaluated: Passed Threshold", 1500);
+            await addLog("Decision Engine: QUALIFIED", 1000);
+            await addLog("Workflow Orchestrator triggering downstream...", 1000);
+            
+            // Mock Scheduling
+            await addLog("Scheduling Service: Earliest overlap found for tomorrow 10:00 AM", 2000);
+            await addLog("Zoom Service: Meeting Created (ID: 123-456-789)", 1500);
+            await addLog("Email Service: Sent to " + document.getElementById('candidate_email').value, 1000);
+            await addLog("Email Service: Sent to " + document.getElementById('recruiter_email').value, 500);
+            await addLog("Dashboard updated. Status: SCHEDULED", 1000);
+        }
+    </script>
+</body>
+</html>
