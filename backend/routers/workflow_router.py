@@ -73,3 +73,72 @@ def get_workflow_status(interview_id: str, db: Session = Depends(get_db)):
             } for log in logs
         ]
     }
+
+from pydantic import BaseModel
+class TestOrchestratorRequest(BaseModel):
+    recruiter_email: str
+    candidate_email: str
+
+@router.post("/test-orchestrator")
+def test_orchestrator(request: TestOrchestratorRequest, db: Session = Depends(get_db)):
+    """
+    Used by the Agent Playground to force a real End-to-End test of the Orchestrator (Zoom + Email)
+    without needing to complete a full 30-minute AI interview first.
+    """
+    from models import JobDescription, Resume
+    
+    # 1. Create dummy JD and Resume just to satisfy DB constraints
+    dummy_jd = JobDescription(raw_text="Dummy JD", parsed_json={"title": "Software Engineer"})
+    dummy_resume = Resume(raw_text="Dummy Resume", parsed_json={"candidate_name": "Test Candidate"})
+    db.add(dummy_jd)
+    db.add(dummy_resume)
+    db.commit()
+    
+    # 2. Create the dummy Interview ready for scheduling
+    interview = Interview(
+        resume_id=dummy_resume.id,
+        jd_id=dummy_jd.id,
+        candidate_name="Test Candidate",
+        candidate_email=request.candidate_email,
+        recruiter_id=request.recruiter_email,
+        status="active",
+        workflow_state="SCHEDULING"
+    )
+    db.add(interview)
+    db.commit()
+    db.refresh(interview)
+    
+    # 3. Add a mock slot for tomorrow
+    from datetime import timedelta
+    tomorrow = datetime.utcnow() + timedelta(days=1)
+    slot = InterviewSlot(
+        interview_id=interview.id,
+        role="candidate",
+        start_time=tomorrow,
+        end_time=tomorrow + timedelta(hours=1)
+    )
+    db.add(slot)
+    
+    recruiter_slot = InterviewSlot(
+        interview_id=interview.id,
+        role="recruiter",
+        start_time=tomorrow,
+        end_time=tomorrow + timedelta(hours=1)
+    )
+    db.add(recruiter_slot)
+    db.commit()
+    
+    # 4. Trigger the real Orchestrator!
+    success, message = WorkflowOrchestrator.try_schedule(db, str(interview.id))
+    
+    # 5. Fetch the result
+    db.refresh(interview)
+    zoom_url = interview.meeting.join_url if interview.meeting else "No Zoom link generated"
+    
+    return {
+        "success": success,
+        "message": message,
+        "zoom_url": zoom_url,
+        "emails_sent_to": [request.candidate_email, request.recruiter_email]
+    }
+
