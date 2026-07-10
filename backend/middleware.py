@@ -23,7 +23,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
     """
 
     # Paths that never require auth
-    OPEN_PATHS = frozenset({"/"  , "/docs", "/openapi.json", "/redoc"})
+    OPEN_PATHS = frozenset({"/"  , "/docs", "/openapi.json", "/redoc", "/api/schedule", "/api/schedule/meetings"})
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         expected_key = os.getenv("HIREINTEL_API_KEY")
