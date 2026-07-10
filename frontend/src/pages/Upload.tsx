@@ -94,6 +94,8 @@ export default function Upload() {
   const [jdFile, setJdFile] = useState<File | null>(null);
   const [jdIdLocal, setJdIdLocal] = useState<string | null>(null);
   const [blueprint, setBlueprint] = useState<Blueprint>(fallbackBlueprint);
+  const [passingScore, setPassingScore] = useState(75);
+  const [availableSlots, setAvailableSlots] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
@@ -148,6 +150,11 @@ export default function Upload() {
     try {
       const formData = new FormData();
       formData.append('file', jdFile);
+      formData.append('passing_score', passingScore.toString());
+      if (availableSlots.trim()) {
+        const slotsArray = availableSlots.split(',').map(s => s.trim()).filter(Boolean);
+        formData.append('available_slots', JSON.stringify(slotsArray));
+      }
       const res = await axios.post('/api/jd/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -305,6 +312,36 @@ export default function Upload() {
                   icon={<FileText className="w-6 h-6" />}
                 >
                   <FileDrop file={jdFile} onFile={setJdFile} label="Job Description" accept=".pdf,.txt,.md" />
+                  
+                  <div className="mt-6 space-y-4">
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-widest text-theme-tertiary block mb-2">
+                        Minimum Qualifying Score ({passingScore}%)
+                      </label>
+                      <input 
+                        type="range" 
+                        min="50" max="100" step="5"
+                        value={passingScore}
+                        onChange={(e) => setPassingScore(Number(e.target.value))}
+                        className="w-full accent-blue-500"
+                      />
+                      <p className="text-[10px] text-theme-secondary mt-1">Candidates scoring {passingScore}% or above will be auto-scheduled.</p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-widest text-theme-tertiary block mb-2">
+                        Available Interview Slots
+                      </label>
+                      <input 
+                        type="text" 
+                        className="input-base text-sm py-3"
+                        placeholder="e.g. Mon 9-11 AM, Thu 2-4 PM"
+                        value={availableSlots}
+                        onChange={(e) => setAvailableSlots(e.target.value)}
+                      />
+                      <p className="text-[10px] text-theme-secondary mt-1">Used by the Autonomous Orchestrator to propose times to qualified candidates.</p>
+                    </div>
+                  </div>
                   <FooterActions
                     onBack={() => setStage(8)}
                     primaryLabel="Analyze JD"

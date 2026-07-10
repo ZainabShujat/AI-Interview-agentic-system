@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scheduling Automation Agent · Recruiter Dashboard</title>
+  <meta name="description" content="A live demo of the Scheduling Automation Agent inside a recruiter's dashboard." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --bg-panel: rgba(255,255,255,0.03);
+      --bg-panel-hover: rgba(255,255,255,0.06);
+      --bg-input: rgba(255,255,255,0.05);
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.15);
+      --text: #f0f0f5;
+      --text-secondary: #8b8b9e;
+      --text-muted: #55556a;
+      --accent: #6366f1;
+      --accent-glow: rgba(99,102,241,0.25);
+      --green: #22c55e;
+      --green-bg: rgba(34,197,94,0.1);
+      --radius: 16px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      line-height: 1.6;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse at 20% 20%, rgba(99,102,241,0.08) 0%, transparent 40%),
+                  radial-gradient(ellipse at 80% 80%, rgba(139,92,246,0.05) 0%, transparent 40%);
+      z-index: -1;
+    }
+
+    /* Top Nav */
+    .top-nav {
+      height: 64px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      background: rgba(10,10,15,0.8);
+      backdrop-filter: blur(12px);
+    }
+    .brand { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+    .brand-icon { width: 24px; height: 24px; border-radius: 6px; background: linear-gradient(135deg, var(--accent), #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 600; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+
+    /* Main Layout */
+    .dashboard-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Left Panel: Dashboard */
+    .left-panel {
+      flex: 1;
+      padding: 32px 40px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+    }
+    .page-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 8px;
+    }
+    .page-subtitle {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+
+    /* Candidates Pipeline */
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .candidate-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: border-color 0.2s;
+    }
+    .candidate-card:hover { border-color: var(--border-hover); }
+    .candidate-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--bg-input);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--accent);
+      border: 1px solid var(--border);
+    }
+    .candidate-info { flex: 1; }
+    .candidate-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .candidate-role { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+    .candidate-score {
+      padding: 6px 12px;
+      background: var(--green-bg);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,0.2);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Scheduled Interviews Widget */
+    .scheduled-widget {
+      margin-top: 40px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .meeting-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .meeting-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .meeting-time {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      text-align: center;
+      min-width: 80px;
+    }
+    .meeting-time .date { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; }
+    .meeting-time .time { font-size: 13px; font-weight: 600; margin-top: 2px; }
+    .meeting-details { flex: 1; }
+    .meeting-details .name { font-size: 14px; font-weight: 600; }
+    .meeting-details .link { font-size: 12px; color: var(--accent); text-decoration: none; margin-top: 4px; display: inline-block; }
+    .meeting-details .link:hover { text-decoration: underline; }
+
+    /* Right Panel: Chatbot */
+    .right-panel {
+      width: 400px;
+      background: rgba(10,10,15,0.6);
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .chat-header .agent-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .chat-header h3 { font-size: 14px; font-weight: 600; }
+    .chat-header p { font-size: 11px; color: var(--green); font-weight: 600; margin-top: 2px; }
+
+    .chat-messages {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .message {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      animation: messageIn 0.3s ease;
+    }
+    @keyframes messageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .message.agent {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+      color: var(--text);
+      align-self: flex-start;
+    }
+    .message.user {
+      background: var(--accent);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+      align-self: flex-end;
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+    .message-timeline {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .timeline-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary); }
+    .timeline-row .icon { color: var(--green); }
+
+    .chat-input-area {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      background: rgba(10,10,15,0.9);
+    }
+    .chat-input-wrapper {
+      display: flex;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .chat-input-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .chat-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      outline: none;
+    }
+    .send-btn {
+      background: transparent;
+      border: none;
+      padding: 0 16px;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 16px;
+      transition: color 0.2s;
+    }
+    .send-btn:hover { color: #fff; }
+    .send-btn:disabled { color: var(--text-muted); cursor: not-allowed; }
+
+    /* Typing indicator */
+    .typing { display: flex; gap: 4px; padding: 12px 16px; }
+    .typing span { width: 6px; height: 6px; background: var(--text-secondary); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+    .typing span:nth-child(1) { animation-delay: -0.32s; }
+    .typing span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+  </style>
+</head>
+<body>
+
+  <!-- Top Nav -->
+  <div class="top-nav">
+    <div class="brand">
+      <div class="brand-icon">✧</div>
+      HireIntel
+    </div>
+    <div class="nav-links">
+      <a href="playground.html">← Back to Playground</a>
+    </div>
+  </div>
+
+  <div class="dashboard-container">
+    
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <h1 class="page-title">Senior Software Engineer</h1>
+      <p class="page-subtitle">Req-4829 · San Francisco, CA (Hybrid)</p>
+
+      <div class="section-title">High Match Candidates</div>
+      
+      <div class="candidate-card">
+        <div class="candidate-avatar">AJ</div>
+        <div class="candidate-info">
+          <div class="candidate-name">Alex Johnson</div>
+          <div class="candidate-role">Former Senior Dev @ Stripe</div>
+        </div>
+        <div class="candidate-score">98% Match</div>
+      </div>
+
+      <div class="candidate-card">
+        <div class="candidate-avatar">MR</div>
+        <div class="candidate-info">
+          <div class="candidate-name">Maria Rodriguez</div>
+          <div class="candidate-role">Lead Engineer @ Cloudflare</div>
+        </div>
+        <div class="candidate-score">94% Match</div>
+      </div>
+
+      <div class="candidate-card">
+        <div class="candidate-avatar">JS</div>
+        <div class="candidate-info">
+          <div class="candidate-name">James Smith</div>
+          <div class="candidate-role">Software Engineer III @ Google</div>
+        </div>
+        <div class="candidate-score">91% Match</div>
+      </div>
+
+      <div class="scheduled-widget">
+        <div class="section-title">Upcoming Interviews</div>
+        <div id="scheduledList">
+          <p style="font-size:13px; color:var(--text-muted);">No interviews scheduled yet. Ask the Scheduling Automation Agent to set one up.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel (Chat) -->
+    <div class="right-panel">
+      <div class="chat-header">
+        <div class="agent-avatar">🤖</div>
+        <div>
+          <h3>Scheduling Automation Agent</h3>
+          <p>● Online</p>
+        </div>
+      </div>
+
+      <div class="chat-messages" id="chatBox">
+        <div class="message agent">
+          Hi Sarah 👋 You have 3 high-match candidates for the Senior Software Engineer role.<br><br>
+          Would you like me to schedule a technical interview with <b>Alex Johnson</b>? He has provided his availability for this week.
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <form id="chatForm" onsubmit="handleSend(event)">
+          <div class="chat-input-wrapper">
+            <input type="text" class="chat-input" id="chatInput" placeholder="Reply to agent..." autocomplete="off" />
+            <button type="submit" class="send-btn" id="sendBtn">➤</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById('chatBox');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const scheduledList = document.getElementById('scheduledList');
+    
+    // Config
+    const API_BASE = "https://hireintel-bv0v.onrender.com";
+
+    function appendMessage(text, sender, isHTML = false) {
+      const div = document.createElement('div');
+      div.className = `message ${sender}`;
+      if (isHTML) {
+        div.innerHTML = text;
+      } else {
+        div.textContent = text;
+      }
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function showTyping() {
+      const div = document.createElement('div');
+      div.className = 'message agent typing-indicator';
+      div.id = 'typingIndicator';
+      div.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function removeTyping() {
+      const el = document.getElementById('typingIndicator');
+      if (el) el.remove();
+    }
+
+    async function handleSend(e) {
+      e.preventDefault();
+      const text = chatInput.value.trim();
+      if (!text) return;
+
+      appendMessage(text, 'user');
+      chatInput.value = '';
+      chatInput.disabled = true;
+      sendBtn.disabled = true;
+
+      showTyping();
+
+      // We simulate the agent understanding the command and triggering the API
+      setTimeout(async () => {
+        removeTyping();
+        appendMessage("Understood. I am cross-referencing Alex's availability with your calendar and preferences. Scheduling now...", "agent");
+        
+        showTyping();
+        await triggerSchedulingAPI(text);
+      }, 1000);
+    }
+
+    async function triggerSchedulingAPI(userPreferences) {
+      // Mock data for the API call
+      const payload = {
+        recruiter: {
+          name: "Sarah Chen",
+          email: "sarah@company.com",
+          availability: [
+            "2025-07-15T09:00:00Z",
+            "2025-07-15T10:00:00Z",
+            "2025-07-15T14:00:00Z",
+            "2025-07-16T11:00:00Z"
+          ],
+          preferences: userPreferences
+        },
+        candidate: {
+          name: "Alex Johnson",
+          email: "alex@email.com",
+          availability: [
+            "2025-07-15T10:00:00Z",
+            "2025-07-15T11:00:00Z",
+            "2025-07-16T11:00:00Z"
+          ],
+          preferences: "Prefers morning slots if possible."
+        },
+        duration_minutes: 45,
+        buffer_minutes: 15
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/schedule`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        removeTyping();
+
+        if (data.status === 'scheduled') {
+          // Format response
+          const dt = new Date(data.selected_slot);
+          const timeStr = dt.toLocaleString('en-US', { weekday: 'long', hour: 'numeric', minute: '2-digit' });
+          
+          let html = `<b>Done! ✅</b><br><br>I've scheduled a 45-minute technical interview for <b>${timeStr}</b>.<br><br>`;
+          html += `<i>Agent Reasoning:</i> ${data.reasoning[data.reasoning.length - 2] || 'Optimal slot chosen based on preferences.'}<br><br>`;
+          
+          html += `<div class="message-timeline">
+            <div class="timeline-row"><span class="icon">✓</span> Created Zoom Meeting (${data.meeting_id})</div>
+            <div class="timeline-row"><span class="icon">✓</span> Sent email to Sarah</div>
+            <div class="timeline-row"><span class="icon">✓</span> Sent email to Alex</div>
+            <div class="timeline-row"><span class="icon">✓</span> Updated Dashboard</div>
+          </div>`;
+          
+          appendMessage(html, 'agent', true);
+          loadMeetings(); // Refresh the dashboard
+        } else {
+          appendMessage(`<b>Issue:</b> I couldn't find a matching slot. (${data.status})`, 'agent', true);
+        }
+
+      } catch (err) {
+        removeTyping();
+        appendMessage(`<b>Error:</b> Could not reach backend API at ${API_BASE}. Make sure it is running.`, 'agent', true);
+      }
+
+      chatInput.disabled = false;
+      sendBtn.disabled = false;
+      chatInput.focus();
+    }
+
+    async function loadMeetings() {
+      try {
+        const res = await fetch(`${API_BASE}/api/schedule/meetings?email=sarah@company.com`);
+        const meetings = await res.json();
+        
+        const active = meetings.filter(m => m.status === 'scheduled');
+        
+        if (active.length === 0) return;
+
+        scheduledList.innerHTML = active.map(m => {
+          const start = new Date(m.start_time);
+          const day = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          const time = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          
+          return `<div class="meeting-item">
+            <div class="meeting-time">
+              <div class="date">${day}</div>
+              <div class="time">${time}</div>
+            </div>
+            <div class="meeting-details">
+              <div class="name">Technical Interview with ${m.candidate_name}</div>
+              <a href="${m.join_url}" target="_blank" class="link">Join Zoom Meeting</a>
+            </div>
+          </div>`;
+        }).join('');
+      } catch (e) {
+        // silently fail if backend is down
+      }
+    }
+
+    // Load initial meetings if any
+    window.addEventListener('DOMContentLoaded', loadMeetings);
+
+  </script>
+</body>
+</html>

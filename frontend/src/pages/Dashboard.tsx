@@ -189,13 +189,12 @@ export default function Dashboard() {
             <div className="border-t border-subtle pt-4" style={{ borderColor: 'var(--color-border-subtle)' }}>
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-xs font-bold text-white">
-                  {localStorage.getItem('user_name') ? localStorage.getItem('user_name')!.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'AJ'}
+                  {localStorage.getItem('user_name') ? localStorage.getItem('user_name')!.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'US'}
                 </div>
                 <div>
                   <span className="text-xs font-semibold text-white block">
-                    {localStorage.getItem('user_name') || 'Arjun V.'}
+                    {localStorage.getItem('user_name') || 'User'}
                   </span>
-                  <span className="text-[10px] block" style={{ color: 'var(--color-text-tertiary)' }}>Talent Acquisition Lead</span>
                 </div>
               </div>
             </div>
@@ -241,7 +240,7 @@ export default function Dashboard() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-lg font-bold text-white leading-tight">
-                Good morning, {localStorage.getItem('user_name') ? localStorage.getItem('user_name')!.split(' ')[0] : 'Arjun'} 👋
+                Good morning, {localStorage.getItem('user_name') ? localStorage.getItem('user_name')!.split(' ')[0] : 'there'} 👋
               </h3>
               <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>Here is what is happening with your hiring pipeline today.</p>
             </div>

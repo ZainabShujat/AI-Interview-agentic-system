@@ -1,22 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload as UploadIcon, FileText, ArrowRight, Loader2, Trophy, UserRoundCheck } from 'lucide-react';
+import { Upload as UploadIcon, FileText, ArrowRight, Loader2, UserRoundCheck } from 'lucide-react';
 import axios from 'axios';
 import { useSession } from '../App';
 
 export default function StudentAssessment() {
   const navigate = useNavigate();
   const { jdId: pathJdId } = useParams<{ jdId?: string }>();
-  const { setResumeId, setJdId } = useSession();
+  const { setResumeId, setJdId, setInterviewId } = useSession();
 
   const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [jdFile, setJdFile] = useState<File | null>(null);
-  const [jdText, setJdText] = useState('');
-  const [jdMode, setJdMode] = useState<'existing' | 'upload' | 'paste'>('existing');
-  const [existingJds, setExistingJds] = useState<any[]>([]);
-  const [preSelectedJd, setPreSelectedJd] = useState<any | null>(null);
-  const [selectedJdId, setSelectedJdId] = useState('');
   const [loading, setLoading] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
   const [error, setError] = useState('');
@@ -27,79 +21,39 @@ export default function StudentAssessment() {
     }
   };
 
-  useEffect(() => {
-    const fetchJds = async () => {
-      try {
-        const res = await axios.get('/api/jd');
-        setExistingJds(res.data || []);
-        
-        if (pathJdId) {
-          const found = (res.data || []).find((j: any) => String(j.id) === String(pathJdId));
-          if (found) {
-            setPreSelectedJd(found);
-            setSelectedJdId(pathJdId);
-            setJdMode('existing');
-          } else {
-            // If ID is not in active list (e.g. newly loaded but not in top 50), try to fetch details
-            try {
-              // Wait, we can query details or default selection
-              if (res.data?.[0]?.id) {
-                setSelectedJdId(res.data[0].id);
-              }
-            } catch (err) {}
-          }
-        } else if (res.data?.[0]?.id) {
-          setSelectedJdId(res.data[0].id);
-        } else {
-          setJdMode('paste');
-        }
-      } catch (err) {
-        console.warn('Could not load existing JDs.', err);
-        setJdMode('paste');
-      }
-    };
-
-    fetchJds();
-  }, [pathJdId]);
-
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const hasJdSource = (jdMode === 'existing' && selectedJdId) || (jdMode === 'upload' && jdFile) || (jdMode === 'paste' && jdText.trim());
-    if (!resumeFile || !hasJdSource) return;
+    if (!resumeFile) return;
+
+    if (!pathJdId) {
+      setError('No Job Description ID found in the URL. Please use the exact link provided by the recruiter.');
+      return;
+    }
 
     setLoading(true);
     setError('');
     try {
-      setProgressMsg('Parsing your resume...');
-      const resumeFormData = new FormData();
-      resumeFormData.append('file', resumeFile);
+      setProgressMsg('Uploading resume and starting assessment...');
+      const formData = new FormData();
+      formData.append('jd_id', pathJdId);
+      formData.append('resume_file', resumeFile);
 
-      const resumeRes = await axios.post('/api/resume', resumeFormData, {
+      const res = await axios.post('/api/interview/start-autonomous', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const resumeId = resumeRes.data.id || resumeRes.data.resume_id;
-      setResumeId(resumeId);
+      
+      const { interview_id, resume_id } = res.data;
+      
+      setResumeId(resume_id);
+      setJdId(pathJdId);
+      setInterviewId(interview_id);
 
-      setProgressMsg('Preparing the target job description...');
-      let jdId = selectedJdId;
-      if (jdMode === 'upload' && jdFile) {
-        const jdFormData = new FormData();
-        jdFormData.append('file', jdFile);
-        const jdRes = await axios.post('/api/jd/upload', jdFormData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        jdId = jdRes.data.id || jdRes.data.jd_id;
-      } else if (jdMode === 'paste') {
-        const jdRes = await axios.post('/api/jd', { text: jdText });
-        jdId = jdRes.data.id || jdRes.data.jd_id;
-      }
-      setJdId(jdId);
-
-      setProgressMsg('Measuring readiness...');
-      navigate('/student/readiness');
+      setProgressMsg('Entering interview room...');
+      // Wait a moment for UX
+      setTimeout(() => navigate('/interview'), 1500);
+      
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Assessment setup failed. Check the backend and Gemini API key, then try again.');
-    } finally {
+      setError(err?.response?.data?.detail || 'Assessment setup failed. Please try again.');
       setLoading(false);
     }
   };
@@ -117,17 +71,17 @@ export default function StudentAssessment() {
                 Student Assessment
               </span>
               <h1 className="text-3xl font-bold text-theme-primary tracking-tight">
-                Test your readiness for a real job.
+                Autonomous Interview Flow
               </h1>
               <p className="text-sm mt-3 text-theme-secondary">
-                Upload your resume, choose a recruiter-created job or add a new JD, review your fit, complete the AI interview, and see where you rank for that job.
+                You've been invited to apply for this role. Upload your resume and the system will automatically parse your background, evaluate your fit, and launch an adaptive AI interview.
               </p>
             </div>
             <div className="space-y-3 text-xs">
               {[
-                ['Readiness Match', 'Resume and JD are compared before the interview.'],
-                ['AI Interview', 'Questions target the role and your gaps.'],
-                ['Job Leaderboard', 'Your final rank is shown against other applicants.'],
+                ['Resume Intelligence', 'Your resume is instantly parsed and matched to the job.'],
+                ['Adaptive Interview', 'Complete a real-time, dynamic AI interview session.'],
+                ['Autonomous Next Steps', 'If you qualify, you will automatically receive an invitation to meet the team.'],
               ].map(([title, body]) => (
                 <div key={title} className="rounded-lg border border-subtle p-4" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
                   <span className="font-bold text-theme-primary block">{title}</span>
@@ -140,155 +94,49 @@ export default function StudentAssessment() {
 
         <section className="lg:col-span-8">
           <form onSubmit={handleSubmit} className="card-premium p-8 space-y-8">
-            <div className="p-3 text-[11px] rounded-lg border flex items-start gap-2.5" style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.25)', color: 'var(--color-text-primary)' }}>
-              <div className="mt-0.5 text-indigo-400">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-              <p className="leading-normal">
-                <strong>Demo Workspace Notice:</strong> To evaluate the system, you can select one of the recruiter's **sample job descriptions** listed under "Target Job", or upload/paste a custom description.
-              </p>
-            </div>
-
             <div>
-              <span className="text-[10px] uppercase tracking-widest font-bold text-theme-tertiary block mb-2">
-                Step 1
-              </span>
-              <h2 className="text-2xl font-bold text-theme-primary tracking-tight">Upload resume and target JD</h2>
+              <h2 className="text-2xl font-bold text-theme-primary tracking-tight">Upload your resume to begin</h2>
               <p className="text-sm text-theme-secondary mt-1">
-                The student side stays direct: give the system your profile and target role, then move into readiness.
+                The entire process is fully automated. You do not need to manually configure anything.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex flex-col">
-                <label className="text-sm font-semibold text-theme-primary mb-3 block">
-                  Resume PDF
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-theme-primary mb-3 block">
+                Resume PDF
+              </label>
+              <div
+                className="card-premium card-interactive flex flex-col items-center justify-center border-dashed py-16 px-6 text-center"
+                style={{
+                  borderStyle: resumeFile ? 'solid' : 'dashed',
+                  borderColor: resumeFile ? 'rgba(255, 255, 255, 0.2)' : 'var(--color-border-subtle)',
+                  backgroundColor: 'var(--color-bg-primary)',
+                }}
+              >
+                <input
+                  type="file"
+                  id="student-resume-upload"
+                  className="hidden"
+                  accept=".pdf"
+                  onChange={handleResumeChange}
+                />
+                <label htmlFor="student-resume-upload" className="cursor-pointer w-full h-full flex flex-col items-center justify-center">
+                  <AnimatePresence mode="wait">
+                    {resumeFile ? (
+                      <motion.div key="file" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center">
+                        <FileText className="w-12 h-12 text-blue-400 mb-4" />
+                        <span className="text-sm font-semibold text-theme-primary max-w-[300px] truncate">{resumeFile.name}</span>
+                        <span className="text-xs text-theme-tertiary mt-2">Click to replace</span>
+                      </motion.div>
+                    ) : (
+                      <motion.div key="prompt" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center">
+                        <UploadIcon className="w-12 h-12 text-theme-secondary mb-4" />
+                        <span className="text-base font-semibold text-theme-primary">Upload resume</span>
+                        <span className="text-xs text-theme-tertiary mt-2">PDF only</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </label>
-                <div
-                  className="flex-grow card-premium card-interactive flex flex-col items-center justify-center border-dashed py-12 px-6 text-center"
-                  style={{
-                    borderStyle: resumeFile ? 'solid' : 'dashed',
-                    borderColor: resumeFile ? 'rgba(255, 255, 255, 0.2)' : 'var(--color-border-subtle)',
-                    backgroundColor: 'var(--color-bg-primary)',
-                  }}
-                >
-                  <input
-                    type="file"
-                    id="student-resume-upload"
-                    className="hidden"
-                    accept=".pdf"
-                    onChange={handleResumeChange}
-                  />
-                  <label htmlFor="student-resume-upload" className="cursor-pointer w-full h-full flex flex-col items-center justify-center">
-                    <AnimatePresence mode="wait">
-                      {resumeFile ? (
-                        <motion.div key="file" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center">
-                          <FileText className="w-8 h-8 text-blue-400 mb-4" />
-                          <span className="text-sm font-semibold text-theme-primary max-w-[220px] truncate">{resumeFile.name}</span>
-                          <span className="text-xs text-theme-tertiary mt-1">Click to replace</span>
-                        </motion.div>
-                      ) : (
-                        <motion.div key="prompt" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center">
-                          <UploadIcon className="w-8 h-8 text-theme-secondary mb-4" />
-                          <span className="text-sm font-semibold text-theme-primary">Upload resume</span>
-                          <span className="text-xs text-theme-tertiary mt-1">PDF only</span>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex flex-col justify-between h-full">
-                <label className="text-sm font-semibold text-theme-primary mb-3 block">
-                  Target Job
-                </label>
-                {preSelectedJd ? (
-                  <div className="rounded-xl border border-subtle p-5 flex-grow flex flex-col justify-center" style={{ backgroundColor: 'var(--color-bg-primary)', borderColor: 'var(--color-border-subtle)' }}>
-                    <span className="text-[10px] uppercase tracking-widest font-bold text-blue-400 block mb-2">Assigned Recruiter Assessment</span>
-                    <h4 className="text-base font-bold text-white leading-tight">{preSelectedJd.title}</h4>
-                    <p className="text-xs text-theme-secondary mt-1">
-                      {preSelectedJd.department || 'General'} • {preSelectedJd.seniority || 'Mid Level'}
-                    </p>
-                    <p className="text-[11px] mt-4 text-emerald-400 font-medium">
-                      ✓ Target role requirements are recruiter-approved
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-subtle p-4 space-y-4 flex-grow" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        ['existing', 'Existing JD'],
-                        ['upload', 'Upload JD'],
-                        ['paste', 'Paste JD'],
-                      ].map(([mode, label]) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => setJdMode(mode as any)}
-                          className="text-xs font-bold rounded-md border px-2 py-2"
-                          style={{
-                            borderColor: jdMode === mode ? 'var(--color-border-hover)' : 'var(--color-border-subtle)',
-                            backgroundColor: jdMode === mode ? 'var(--color-mauve-strong)' : 'transparent',
-                          }}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {jdMode === 'existing' && (
-                      <div className="space-y-3">
-                        {existingJds.length > 0 ? (
-                          <select
-                            className="input-base"
-                            value={selectedJdId}
-                            onChange={(event) => setSelectedJdId(event.target.value)}
-                          >
-                            {existingJds.map((jd) => (
-                              <option key={jd.id} value={jd.id}>
-                                {jd.title} {jd.seniority ? `- ${jd.seniority}` : ''}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <p className="text-xs text-theme-secondary">
-                            No recruiter-created JDs yet. Upload or paste a JD to create the first shared benchmark.
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {jdMode === 'upload' && (
-                      <div className="rounded-lg border border-dashed p-6 text-center" style={{ borderColor: 'var(--color-border-hover)' }}>
-                        <input
-                          id="student-jd-file"
-                          type="file"
-                          className="hidden"
-                          accept=".pdf,.txt,.md"
-                          onChange={(event) => setJdFile(event.target.files?.[0] || null)}
-                        />
-                        <label htmlFor="student-jd-file" className="cursor-pointer flex flex-col items-center">
-                          <FileText className="w-8 h-8 mb-3" />
-                          <span className="text-sm font-semibold text-theme-primary">{jdFile ? jdFile.name : 'Upload JD file'}</span>
-                          <span className="text-xs text-theme-tertiary mt-1">PDF, TXT, or Markdown</span>
-                        </label>
-                      </div>
-                    )}
-
-                    {jdMode === 'paste' && (
-                      <textarea
-                        id="student-jd-input"
-                        className="input-base resize-none text-sm min-h-[190px] p-4"
-                        placeholder="Paste the job description you want to benchmark yourself against..."
-                        value={jdText}
-                        onChange={(event) => setJdText(event.target.value)}
-                      />
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -300,22 +148,14 @@ export default function StudentAssessment() {
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-xs text-theme-secondary">
-                <Trophy className="w-4 h-4 text-blue-400" />
-                <span>After interview completion, your rank appears on the job leaderboard.</span>
-              </div>
+            <div className="flex justify-end pt-4 border-t border-subtle">
               <button
                 type="submit"
-                disabled={
-                  !resumeFile ||
-                  loading ||
-                  !((jdMode === 'existing' && selectedJdId) || (jdMode === 'upload' && jdFile) || (jdMode === 'paste' && jdText.trim()))
-                }
-                className="btn-base btn-primary px-6 py-3 gap-2"
+                disabled={!resumeFile || loading}
+                className="btn-base btn-primary px-8 py-3 gap-2"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                <span>{loading ? progressMsg : 'Measure Readiness'}</span>
+                <span>{loading ? progressMsg : 'Start Interview'}</span>
               </button>
             </div>
           </form>

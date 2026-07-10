@@ -239,7 +239,7 @@ export default function Login() {
                 <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-tertiary)' }} />
                 <input
                   type="text"
-                  placeholder={role === 'recruiter' ? 'Arjun V.' : 'Aarav S.'}
+                  placeholder="Full Name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="input-base !pl-10 text-xs w-full"

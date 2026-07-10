@@ -1,0 +1,21 @@
+graph TD
+    A["Recruiter Availability"] --> C["SchedulingAgent.schedule()"]
+    B["Candidate Availability"] --> C
+
+    subgraph Agent["Pure Intelligence (No External Deps)"]
+        C --> D["Divide into Windows<br/>(duration_minutes)"]
+        D --> E["Find Overlapping Windows"]
+        E --> F{"Conflict Detection<br/>(+ buffer_minutes)"}
+        F -->|"Conflict"| G["Skip + Log Reason"]
+        G --> E
+        F -->|"Clear"| H["Return Decision<br/>+ Reasoning"]
+    end
+
+    subgraph Router["Orchestration Layer (scheduling_router.py)"]
+        H --> I{"Duplicate Check"}
+        I -->|"Duplicate"| J["Return: duplicate"]
+        I -->|"New"| K["ZoomService.create_meeting()"]
+        K --> L["EmailService.send_emails()"]
+        L --> M["Store in ScheduledMeeting"]
+        M --> N["Return: scheduled<br/>+ Agent Decision Log"]
+    end

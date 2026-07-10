@@ -187,7 +187,7 @@ h6 {
 
 .btn-primary {
   background: linear-gradient(135deg, var(--color-accent-deep), var(--color-accent) 52%, var(--color-accent-teal));
-  color: var(--color-text-primary);
+  color: var(--color-bg-primary);
   box-shadow: 0 10px 24px rgba(126, 34, 206, 0.24);
 }
 
@@ -257,27 +257,7 @@ h6 {
   color: var(--color-text-tertiary);
 }
 
-.text-white,
-.text-white\/80,
-.text-white\/90,
-.text-black,
-.hover\:text-white:hover,
-.text-dark-300,
-.text-dark-400,
-.text-dark-500,
-.text-slate-950,
-.text-slate-800,
-.text-slate-700 {
-  color: var(--color-text-primary) !important;
-}
 
-html.light-theme :where(h1, h2, h3, h4, h5, h6, p, span, a, button, label, input, textarea, td, th, li, strong, small, div) {
-  color: #000000 !important;
-}
-
-html:not(.light-theme) :where(h1, h2, h3, h4, h5, h6, p, span, a, button, label, input, textarea, td, th, li, strong, small, div) {
-  color: #ffffff !important;
-}
 
 /* Mauve compatibility layer for legacy Tailwind color utilities used in components. */
 .bg-blue-600,

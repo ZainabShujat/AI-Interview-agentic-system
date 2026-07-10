@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scheduling Agent · Playground</title>
+  <meta name="description" content="A polished, GitHub-demo-quality playground for the Scheduling Agent. Schedule real interviews in under two minutes." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --bg-card: rgba(255,255,255,0.03);
+      --bg-card-hover: rgba(255,255,255,0.06);
+      --bg-input: rgba(255,255,255,0.05);
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.15);
+      --text: #f0f0f5;
+      --text-secondary: #8b8b9e;
+      --text-muted: #55556a;
+      --accent: #6366f1;
+      --accent-glow: rgba(99,102,241,0.25);
+      --green: #22c55e;
+      --green-bg: rgba(34,197,94,0.1);
+      --red: #ef4444;
+      --red-bg: rgba(239,68,68,0.1);
+      --yellow: #eab308;
+      --yellow-bg: rgba(234,179,8,0.1);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background effect */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.06) 0%, transparent 50%),
+                  radial-gradient(ellipse at 70% 80%, rgba(139,92,246,0.04) 0%, transparent 50%);
+      z-index: -1;
+    }
+
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+    /* Header */
+    .header {
+      padding: 32px 0 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+    .header-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .header h1 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #fff 40%, var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header p { color: var(--text-secondary); font-size: 14px; margin-top: 6px; }
+
+    /* Config bar */
+    .config-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .config-bar label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+    }
+    .config-bar input[type="text"] {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      width: 280px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .config-bar input[type="text"]:focus { border-color: var(--accent); }
+
+    /* Main grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    /* Card */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .card:hover { border-color: var(--border-hover); }
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title .icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    /* Form inputs */
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    textarea.form-input {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    /* Slots */
+    .slots-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .slot-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      animation: slideIn 0.2s ease;
+    }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+    .slot-item .slot-text { flex: 1; color: var(--text); }
+    .slot-remove {
+      background: none;
+      border: none;
+      color: var(--red);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+    .slot-remove:hover { background: var(--red-bg); }
+    .slot-add-row { display: flex; gap: 8px; align-items: flex-end; }
+    .slot-add-row input { flex: 1; }
+    .btn-add-slot {
+      padding: 10px 16px;
+      background: var(--bg-card-hover);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-add-slot:hover { background: rgba(255,255,255,0.1); border-color: var(--border-hover); }
+
+    /* Duration / Buffer presets */
+    .preset-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .preset-row .preset-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .preset-group { flex: 1; }
+    .preset-buttons { display: flex; gap: 6px; }
+    .preset-btn {
+      flex: 1;
+      padding: 8px 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-input);
+      color: var(--text-secondary);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .preset-btn:hover { border-color: var(--border-hover); color: var(--text); }
+    .preset-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+
+    /* Schedule button */
+    .schedule-btn {
+      width: 100%;
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 8px 24px var(--accent-glow);
+      margin-bottom: 24px;
+      letter-spacing: -0.01em;
+    }
+    .schedule-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(99,102,241,0.4);
+    }
+    .schedule-btn:active { transform: translateY(0); }
+    .schedule-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Results grid */
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    /* Timeline */
+    .timeline { display: flex; flex-direction: column; gap: 0; }
+    .timeline-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-left: 2px solid var(--border);
+      padding-left: 16px;
+      margin-left: 8px;
+      animation: fadeIn 0.3s ease;
+      position: relative;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -5px;
+      top: 14px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+    .timeline-item.done::before { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+    .timeline-item.error::before { background: var(--red); box-shadow: 0 0 8px rgba(239,68,68,0.5); }
+    .timeline-item.warning::before { background: var(--yellow); box-shadow: 0 0 8px rgba(234,179,8,0.5); }
+    .timeline-step { font-size: 13px; font-weight: 600; color: var(--text); }
+    .timeline-detail { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+    /* Decision log */
+    .decision-log { display: flex; flex-direction: column; gap: 6px; }
+    .decision-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-input);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      animation: slideIn 0.25s ease;
+    }
+    .decision-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+    /* Meeting Dashboard */
+    .meeting-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      transition: border-color 0.2s;
+      animation: slideIn 0.3s ease;
+    }
+    .meeting-card:hover { border-color: var(--border-hover); }
+    .meeting-time {
+      text-align: center;
+      min-width: 64px;
+      padding: 8px;
+      background: var(--bg-card);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .meeting-time .day { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; }
+    .meeting-time .time { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 2px; }
+    .meeting-info { flex: 1; }
+    .meeting-info .names { font-size: 14px; font-weight: 600; color: var(--text); }
+    .meeting-info .emails { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-scheduled { background: var(--green-bg); color: var(--green); }
+    .status-cancelled { background: var(--red-bg); color: var(--red); }
+    .status-completed { background: var(--yellow-bg); color: var(--yellow); }
+    .btn-cancel {
+      padding: 6px 12px;
+      background: var(--red-bg);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 6px;
+      color: var(--red);
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-cancel:hover { background: rgba(239,68,68,0.2); }
+
+    /* Metrics bar */
+    .metrics-bar {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+    }
+    .metric-value {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #fff, var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .metric-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* Success banner */
+    .success-banner {
+      background: linear-gradient(135deg, rgba(34,197,94,0.1), rgba(99,102,241,0.1));
+      border: 1px solid rgba(34,197,94,0.2);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      text-align: center;
+      margin-bottom: 24px;
+      animation: fadeIn 0.5s ease;
+    }
+    .success-banner h3 { font-size: 18px; font-weight: 700; color: var(--green); margin-bottom: 4px; }
+    .success-banner p { font-size: 13px; color: var(--text-secondary); }
+    .success-banner a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    .success-banner a:hover { text-decoration: underline; }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 24px 0;
+      border-top: 1px solid var(--border);
+      margin-top: 16px;
+    }
+    .footer p { font-size: 12px; color: var(--text-muted); }
+    .footer a { color: var(--accent); text-decoration: none; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .main-grid, .results-grid, .metrics-bar { grid-template-columns: 1fr; }
+      .metrics-bar { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-badge"><span class="dot"></span> Live Playground</div>
+      <h1>Scheduling Agent</h1>
+      <p>An AB Talks Open Agent — Schedule real interviews with Zoom + Email in under two minutes.</p>
+      <div style="margin-top: 16px;">
+        <a href="recruiter-dashboard.html" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; color: var(--accent); font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.2s;">
+          ✨ Open Recruiter Dashboard Demo →
+        </a>
+      </div>
+    </div>
+
+    <!-- Config -->
+    <div class="config-bar">
+      <label>Backend URL</label>
+      <input type="text" id="apiBase" value="https://hireintel-bv0v.onrender.com" />
+    </div>
+
+    <!-- Scheduling Form -->
+    <div class="main-grid">
+
+      <!-- Recruiter -->
+      <div class="card">
+        <div class="card-title"><div class="icon" style="background:rgba(99,102,241,0.15);color:var(--accent);">👤</div> Recruiter</div>
+        <div class="form-group">
+          <label>Name</label>
+          <input class="form-input" type="text" id="recruiterName" value="Sarah Chen" />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input class="form-input" type="email" id="recruiterEmail" placeholder="recruiter@company.com" />
+        </div>
+        <div class="form-group">
+          <label>Preferences (Optional)</label>
+          <textarea class="form-input" id="recruiterPreferences" placeholder="e.g., Prefers afternoon slots, avoid Fridays"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Available Slots</label>
+          <div class="slots-list" id="recruiterSlots"></div>
+          <div class="slot-add-row">
+            <input class="form-input" type="datetime-local" id="recruiterSlotInput" />
+            <button class="btn-add-slot" onclick="addSlot('recruiter')">+ Add</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Candidate -->
+      <div class="card">
+        <div class="card-title"><div class="icon" style="background:rgba(139,92,246,0.15);color:#8b5cf6;">🎓</div> Candidate</div>
+        <div class="form-group">
+          <label>Name</label>
+          <input class="form-input" type="text" id="candidateName" value="Alex Johnson" />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input class="form-input" type="email" id="candidateEmail" placeholder="candidate@email.com" />
+        </div>
+        <div class="form-group">
+          <label>Preferences (Optional)</label>
+          <textarea class="form-input" id="candidatePreferences" placeholder="e.g., Prefers morning slots"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Available Slots</label>
+          <div class="slots-list" id="candidateSlots"></div>
+          <div class="slot-add-row">
+            <input class="form-input" type="datetime-local" id="candidateSlotInput" />
+            <button class="btn-add-slot" onclick="addSlot('candidate')">+ Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Duration & Buffer -->
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="preset-row">
+        <div class="preset-group">
+          <div class="preset-label">Meeting Duration</div>
+          <div class="preset-buttons" id="durationBtns">
+            <button class="preset-btn" onclick="setPreset('duration', 15, this)">15 min</button>
+            <button class="preset-btn active" onclick="setPreset('duration', 30, this)">30 min</button>
+            <button class="preset-btn" onclick="setPreset('duration', 45, this)">45 min</button>
+            <button class="preset-btn" onclick="setPreset('duration', 60, this)">60 min</button>
+          </div>
+        </div>
+        <div class="preset-group">
+          <div class="preset-label">Buffer Time</div>
+          <div class="preset-buttons" id="bufferBtns">
+            <button class="preset-btn" onclick="setPreset('buffer', 0, this)">0 min</button>
+            <button class="preset-btn" onclick="setPreset('buffer', 5, this)">5 min</button>
+            <button class="preset-btn" onclick="setPreset('buffer', 10, this)">10 min</button>
+            <button class="preset-btn active" onclick="setPreset('buffer', 15, this)">15 min</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Schedule Button -->
+    <button class="schedule-btn" id="scheduleBtn" onclick="scheduleInterview()">
+      Schedule Interview
+    </button>
+
+    <!-- Success Banner (hidden by default) -->
+    <div class="success-banner" id="successBanner" style="display:none;"></div>
+
+    <!-- Results -->
+    <div class="results-grid" id="resultsSection" style="display:none;">
+
+      <!-- Execution Timeline -->
+      <div class="card">
+        <div class="card-title"><div class="icon" style="background:rgba(34,197,94,0.15);color:var(--green);">⏱</div> Execution Timeline</div>
+        <div class="timeline" id="timeline"></div>
+      </div>
+
+      <!-- Agent Decision Log -->
+      <div class="card">
+        <div class="card-title"><div class="icon" style="background:rgba(234,179,8,0.15);color:var(--yellow);">🧠</div> Agent Decision Log</div>
+        <div class="decision-log" id="decisionLog"></div>
+      </div>
+
+    </div>
+
+    <!-- Meeting Dashboard -->
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="card-title" style="margin-bottom:16px;">
+        <div class="icon" style="background:rgba(99,102,241,0.15);color:var(--accent);">📋</div>
+        Meeting Dashboard
+        <button class="btn-add-slot" onclick="loadMeetings()" style="margin-left:auto;font-size:11px;padding:6px 12px;">↻ Refresh</button>
+      </div>
+      <div id="meetingDashboard">
+        <div class="empty-state">No meetings yet. Schedule your first interview above.</div>
+      </div>
+    </div>
+
+    <!-- Agent Metrics -->
+    <div class="card-title" style="margin-bottom:12px;padding-left:4px;">
+      <div class="icon" style="background:rgba(139,92,246,0.15);color:#8b5cf6;">📊</div>
+      Agent Metrics
+    </div>
+    <div class="metrics-bar" id="metricsBar">
+      <div class="metric-card"><div class="metric-value" id="metricScheduled">0</div><div class="metric-label">Meetings Scheduled</div></div>
+      <div class="metric-card"><div class="metric-value" id="metricTime">— ms</div><div class="metric-label">Avg Scheduling Time</div></div>
+      <div class="metric-card"><div class="metric-value" id="metricConflicts">0</div><div class="metric-label">Conflicts Resolved</div></div>
+      <div class="metric-card"><div class="metric-value" id="metricEmails">0</div><div class="metric-label">Emails Sent</div></div>
+      <div class="metric-card"><div class="metric-value" id="metricZoom">0</div><div class="metric-label">Zoom Meetings</div></div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Scheduling Agent · An <a href="#">AB Talks</a> Open Agent · MIT License</p>
+    </div>
+
+  </div>
+
+  <script>
+    // State
+    let recruiterSlots = [];
+    let candidateSlots = [];
+    let durationMinutes = 30;
+    let bufferMinutes = 15;
+    let schedulingTimes = [];
+    let totalConflicts = 0;
+
+    function getApiBase() {
+      return document.getElementById('apiBase').value.replace(/\/+$/, '');
+    }
+
+    // Preset buttons
+    function setPreset(type, value, btn) {
+      const containerId = type === 'duration' ? 'durationBtns' : 'bufferBtns';
+      document.querySelectorAll(`#${containerId} .preset-btn`).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (type === 'duration') durationMinutes = value;
+      else bufferMinutes = value;
+    }
+
+    // Slots management
+    function addSlot(role) {
+      const input = document.getElementById(`${role}SlotInput`);
+      if (!input.value) return;
+
+      const dt = new Date(input.value);
+      const isoStr = dt.toISOString();
+      const displayStr = dt.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+      if (role === 'recruiter') recruiterSlots.push(isoStr);
+      else candidateSlots.push(isoStr);
+
+      renderSlots(role);
+      input.value = '';
+    }
+
+    function removeSlot(role, index) {
+      if (role === 'recruiter') recruiterSlots.splice(index, 1);
+      else candidateSlots.splice(index, 1);
+      renderSlots(role);
+    }
+
+    function renderSlots(role) {
+      const slots = role === 'recruiter' ? recruiterSlots : candidateSlots;
+      const container = document.getElementById(`${role}Slots`);
+      container.innerHTML = slots.map((s, i) => {
+        const dt = new Date(s);
+        const label = dt.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        return `<div class="slot-item">
+          <span class="slot-text">${label}</span>
+          <button class="slot-remove" onclick="removeSlot('${role}', ${i})">×</button>
+        </div>`;
+      }).join('');
+    }
+
+    // Schedule Interview
+    async function scheduleInterview() {
+      const btn = document.getElementById('scheduleBtn');
+      btn.disabled = true;
+      btn.textContent = 'Scheduling...';
+
+      // Reset UI
+      document.getElementById('successBanner').style.display = 'none';
+      document.getElementById('resultsSection').style.display = 'grid';
+      document.getElementById('timeline').innerHTML = '';
+      document.getElementById('decisionLog').innerHTML = '';
+
+      const payload = {
+        recruiter: {
+          name: document.getElementById('recruiterName').value,
+          email: document.getElementById('recruiterEmail').value,
+          availability: recruiterSlots,
+          preferences: document.getElementById('recruiterPreferences').value,
+        },
+        candidate: {
+          name: document.getElementById('candidateName').value,
+          email: document.getElementById('candidateEmail').value,
+          availability: candidateSlots,
+          preferences: document.getElementById('candidatePreferences').value,
+        },
+        duration_minutes: durationMinutes,
+        buffer_minutes: bufferMinutes,
+      };
+
+      const startTime = performance.now();
+
+      try {
+        const res = await fetch(`${getApiBase()}/api/schedule`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        const elapsed = Math.round(performance.now() - startTime);
+        schedulingTimes.push(elapsed);
+
+        // Render timeline
+        const timelineEl = document.getElementById('timeline');
+        (data.timeline || []).forEach((step, i) => {
+          setTimeout(() => {
+            const item = document.createElement('div');
+            item.className = `timeline-item ${step.status}`;
+            item.innerHTML = `
+              <div>
+                <div class="timeline-step">${step.step}</div>
+                <div class="timeline-detail">${step.detail || ''}</div>
+              </div>`;
+            timelineEl.appendChild(item);
+          }, i * 150);
+        });
+
+        // Render decision log
+        const logEl = document.getElementById('decisionLog');
+        (data.reasoning || []).forEach((reason, i) => {
+          setTimeout(() => {
+            const item = document.createElement('div');
+            item.className = 'decision-item';
+            const icon = reason.toLowerCase().includes('skipped') ? '⚠️' : '✓';
+            item.innerHTML = `<span class="decision-icon">${icon}</span><span>${reason}</span>`;
+            logEl.appendChild(item);
+
+            if (reason.toLowerCase().includes('skipped')) totalConflicts++;
+          }, i * 100);
+        });
+
+        // Success banner
+        if (data.status === 'scheduled') {
+          const banner = document.getElementById('successBanner');
+          const slotDate = data.selected_slot ? new Date(data.selected_slot).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+          banner.innerHTML = `
+            <h3>✅ Interview Successfully Scheduled</h3>
+            <p>${slotDate} · ${durationMinutes} min · <a href="${data.meeting_url}" target="_blank">Open Zoom Link</a></p>`;
+          banner.style.display = 'block';
+        } else if (data.status === 'duplicate') {
+          const banner = document.getElementById('successBanner');
+          banner.innerHTML = `
+            <h3>⚠️ Duplicate Meeting Detected</h3>
+            <p>A similar meeting already exists. <a href="${data.meeting_url}" target="_blank">Open existing Zoom Link</a></p>`;
+          banner.style.display = 'block';
+        } else {
+          const banner = document.getElementById('successBanner');
+          banner.innerHTML = `<h3>❌ Could Not Schedule</h3><p>${data.status}: Check the Agent Decision Log for details.</p>`;
+          banner.style.display = 'block';
+          banner.style.borderColor = 'rgba(239,68,68,0.2)';
+          banner.style.background = 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(99,102,241,0.05))';
+        }
+
+        // Refresh meetings and metrics
+        setTimeout(() => { loadMeetings(); updateMetrics(); }, 500);
+
+      } catch (err) {
+        const banner = document.getElementById('successBanner');
+        banner.innerHTML = `<h3>❌ Connection Error</h3><p>Could not reach the backend at ${getApiBase()}. Is it running?</p>`;
+        banner.style.display = 'block';
+        banner.style.borderColor = 'rgba(239,68,68,0.2)';
+        banner.style.background = 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(99,102,241,0.05))';
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Schedule Interview';
+    }
+
+    // Load meetings
+    async function loadMeetings() {
+      const container = document.getElementById('meetingDashboard');
+      try {
+        const res = await fetch(`${getApiBase()}/api/schedule/meetings`);
+        const meetings = await res.json();
+
+        if (!meetings.length) {
+          container.innerHTML = '<div class="empty-state">No meetings yet. Schedule your first interview above.</div>';
+          return;
+        }
+
+        container.innerHTML = meetings.map(m => {
+          const start = new Date(m.start_time);
+          const day = start.toLocaleDateString('en-US', { weekday: 'short' });
+          const time = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          const statusClass = m.status === 'scheduled' ? 'status-scheduled' : m.status === 'cancelled' ? 'status-cancelled' : 'status-completed';
+          const statusIcon = m.status === 'scheduled' ? '🟢' : m.status === 'cancelled' ? '🔴' : '🟡';
+          const cancelBtn = m.status === 'scheduled' ? `<button class="btn-cancel" onclick="cancelMeeting('${m.id}')">Cancel</button>` : '';
+
+          return `<div class="meeting-card">
+            <div class="meeting-time">
+              <div class="day">${day}</div>
+              <div class="time">${time}</div>
+            </div>
+            <div class="meeting-info">
+              <div class="names">${m.recruiter_name} ↔ ${m.candidate_name}</div>
+              <div class="emails">${m.recruiter_email} · ${m.candidate_email}</div>
+            </div>
+            <span class="status-badge ${statusClass}">${statusIcon} ${m.status}</span>
+            ${cancelBtn}
+          </div>`;
+        }).join('');
+
+        updateMetrics(meetings);
+      } catch (err) {
+        container.innerHTML = '<div class="empty-state">Could not load meetings. Is the backend running?</div>';
+      }
+    }
+
+    // Cancel meeting
+    async function cancelMeeting(meetingId) {
+      try {
+        await fetch(`${getApiBase()}/api/schedule/${meetingId}`, { method: 'DELETE' });
+        loadMeetings();
+      } catch (err) {
+        alert('Failed to cancel meeting');
+      }
+    }
+
+    // Update metrics
+    function updateMetrics(meetings) {
+      if (!meetings) {
+        fetch(`${getApiBase()}/api/schedule/meetings`)
+          .then(r => r.json())
+          .then(m => updateMetrics(m))
+          .catch(() => {});
+        return;
+      }
+
+      const scheduled = meetings.filter(m => m.status === 'scheduled').length;
+      const total = meetings.length;
+      const avgTime = schedulingTimes.length > 0
+        ? Math.round(schedulingTimes.reduce((a, b) => a + b, 0) / schedulingTimes.length)
+        : 0;
+
+      document.getElementById('metricScheduled').textContent = scheduled;
+      document.getElementById('metricTime').textContent = avgTime ? `${avgTime} ms` : '— ms';
+      document.getElementById('metricConflicts').textContent = totalConflicts;
+      document.getElementById('metricEmails').textContent = scheduled * 2;
+      document.getElementById('metricZoom').textContent = total;
+    }
+
+    // Init: load meetings on page load
+    window.addEventListener('DOMContentLoaded', loadMeetings);
+  </script>
+</body>
+</html>

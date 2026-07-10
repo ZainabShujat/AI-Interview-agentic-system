@@ -5,9 +5,7 @@ import { Mic, MicOff, Send, Loader2, Timer, Video, VideoOff, Volume2, VolumeX, C
 import { useSession } from '../App';
 import axios from 'axios';
 
-// SpeechRecognition type definitions
-type SpeechRecognitionType = any;
-const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+// Removed local SpeechRecognition in favor of Deepgram backend
 
 export default function Interview() {
   const navigate = useNavigate();
@@ -35,7 +33,9 @@ export default function Interview() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [firstInputTime, setFirstInputTime] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const recognitionRef = useRef<SpeechRecognitionType | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const startTimeRef = useRef<number>(0);
 
   // Proctoring state
@@ -101,46 +101,10 @@ export default function Interview() {
     }
   };
 
-  // Initialize Speech Recognition
+  // Clear audio blob when question changes
   useEffect(() => {
-    if (SpeechRecognition) {
-      const rec = new SpeechRecognition();
-      rec.continuous = true;
-      rec.interimResults = true;
-      rec.lang = 'en-US';
-
-      rec.onresult = (event: any) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
-        }
-
-        if (finalTranscript) {
-          setAnswerText((prev) => prev + (prev ? ' ' : '') + finalTranscript);
-          if (firstInputTime === null) {
-            setFirstInputTime(Date.now() - startTimeRef.current);
-          }
-        }
-      };
-
-      rec.onerror = (e: any) => {
-        console.error('Speech recognition error:', e);
-        setIsRecording(false);
-      };
-
-      rec.onend = () => {
-        setIsRecording(false);
-      };
-
-      recognitionRef.current = rec;
-    }
-  }, [firstInputTime]);
+    setAudioBlob(null);
+  }, [currentQuestionIndex]);
 
   // Start/Stop question timer
   useEffect(() => {
@@ -160,16 +124,34 @@ export default function Interview() {
   }, [currentQuestionIndex]);
 
   const toggleRecording = () => {
-    if (!recognitionRef.current) {
-      alert('Speech Recognition API is not supported in this browser. Please use Chrome/Edge or type your response.');
+    if (!stream) {
+      alert('Microphone access is required to record audio.');
       return;
     }
 
-    if (isRecording) {
-      recognitionRef.current.stop();
+    if (isRecording && mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
       setIsRecording(false);
     } else {
-      recognitionRef.current.start();
+      setAudioBlob(null);
+      setAnswerText(''); // Clear typed text if they choose to record
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(blob);
+        setAnswerText('[Audio Recording Saved - Ready to Submit]');
+      };
+
+      mediaRecorder.start();
+      mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
       if (firstInputTime === null) {
         setFirstInputTime(Date.now() - startTimeRef.current);
@@ -210,11 +192,12 @@ export default function Interview() {
   };
 
   const handleSubmitResponse = async () => {
-    if (!answerText.trim()) return;
+    if (!answerText.trim() && !audioBlob) return;
 
     if (timerRef.current) clearInterval(timerRef.current);
-    if (isRecording && recognitionRef.current) {
-      recognitionRef.current.stop();
+    if (isRecording && mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
     }
 
     setLoading(true);
@@ -226,13 +209,30 @@ export default function Interview() {
         throw new Error('No active interview session was found. Start from the student or recruiter assessment flow.');
       }
 
-      const res = await axios.post('/api/interview/answer', {
-        interview_id: interviewId,
-        question_text: questionText,
-        category,
-        answer_text: answerText,
-        signals,
-      });
+      let res;
+      if (audioBlob) {
+        // Submit via Deepgram backend
+        const formData = new FormData();
+        formData.append('interview_id', interviewId);
+        formData.append('question_text', questionText);
+        formData.append('category', category);
+        formData.append('signals', JSON.stringify(signals));
+        formData.append('audio_file', audioBlob, 'answer.webm');
+
+        res = await axios.post('/api/interview/audio-answer', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      } else {
+        // Submit typed text
+        res = await axios.post('/api/interview/answer', {
+          interview_id: interviewId,
+          question_text: questionText,
+          category,
+          answer_text: answerText,
+          signals,
+        });
+      }
+
       const nextQuestionRes = res.data;
 
       if (nextQuestionRes.finished || currentQuestionIndex >= totalQuestions - 1) {
