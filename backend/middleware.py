@@ -43,9 +43,10 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         # Validate key
         provided_key = request.headers.get("X-API-Key") or request.headers.get("x-api-key")
         if not provided_key or provided_key != expected_key:
-            raise HTTPException(
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
                 status_code=401,
-                detail="Invalid or missing API key. Provide a valid X-API-Key header.",
+                content={"detail": "Invalid or missing API key. Provide a valid X-API-Key header."},
             )
 
         return await call_next(request)

@@ -15,6 +15,9 @@ app = FastAPI(
     version="0.1.0"
 )
 
+# API key authentication (disabled when HIREINTEL_API_KEY env var is unset)
+app.add_middleware(APIKeyMiddleware)
+
 # Configure CORS for local development
 app.add_middleware(
     CORSMiddleware,
@@ -23,9 +26,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# API key authentication (disabled when HIREINTEL_API_KEY env var is unset)
-app.add_middleware(APIKeyMiddleware)
 
 # Register Routers
 app.include_router(resume_router.router)

@@ -292,7 +292,8 @@
       <div class="brand-icon">✧</div>
       HireIntel
     </div>
-    <div class="nav-links">
+    <div class="nav-links" style="display:flex; align-items:center; gap:16px;">
+      <input type="password" id="apiKeyInput" placeholder="Enter HIREINTEL_API_KEY" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:6px; padding:6px 12px; color:white; font-size:12px; outline:none; width:220px;" />
       <a href="playground.html">← Back to Playground</a>
     </div>
   </div>
@@ -455,9 +456,13 @@
       };
 
       try {
+        const apiKey = document.getElementById('apiKeyInput').value;
+        const headers = { 'Content-Type': 'application/json' };
+        if (apiKey) headers['x-api-key'] = apiKey;
+
         const res = await fetch(`${API_BASE}/api/schedule`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers,
           body: JSON.stringify(payload)
         });
         
@@ -487,7 +492,8 @@
 
       } catch (err) {
         removeTyping();
-        appendMessage(`<b>Error:</b> Could not reach backend API at ${API_BASE}. Make sure it is running.`, 'agent', true);
+        console.error("Scheduling API Error:", err);
+        appendMessage(`<b>Error:</b> Could not reach backend API at ${API_BASE}. Make sure it is running. (Details: ${err.message})`, 'agent', true);
       }
 
       chatInput.disabled = false;
@@ -497,7 +503,11 @@
 
     async function loadMeetings() {
       try {
-        const res = await fetch(`${API_BASE}/api/schedule/meetings?email=sarah@company.com`);
+        const apiKey = document.getElementById('apiKeyInput')?.value;
+        const headers = {};
+        if (apiKey) headers['x-api-key'] = apiKey;
+
+        const res = await fetch(`${API_BASE}/api/schedule/meetings?email=sarah@company.com`, { headers });
         const meetings = await res.json();
         
         const active = meetings.filter(m => m.status === 'scheduled');
