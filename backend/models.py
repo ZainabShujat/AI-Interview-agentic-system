@@ -22,6 +22,8 @@ class JobDescription(Base):
     user_id = Column(String(100), nullable=True)
     recruiter_id = Column(String(100), nullable=True) # Tracks which recruiter created this role
     department = Column(String(100), nullable=True) # For recruiter department filters
+    passing_score = Column(Integer, default=60) # Recruiter-defined passing threshold
+    available_slots = Column(JSON, default=list) # Recruiter available slots for interviews
     raw_text = Column(Text, nullable=False)
     parsed_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -123,4 +125,27 @@ class AuditLog(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     interview = relationship("Interview", back_populates="audit_logs")
+
+class ScheduledMeeting(Base):
+    """
+    Standalone meeting registry for the Scheduling Agent.
+    Independent from the interview-pipeline Meeting model.
+    Used for conflict detection, duplicate prevention, and meeting lifecycle.
+    """
+    __tablename__ = "scheduled_meetings"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    recruiter_name = Column(String(255), nullable=False)
+    recruiter_email = Column(String(255), nullable=False)
+    candidate_name = Column(String(255), nullable=False)
+    candidate_email = Column(String(255), nullable=False)
+    meeting_id = Column(String(100), nullable=False)
+    join_url = Column(Text, nullable=False)
+    password = Column(String(100), nullable=True)
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    end_time = Column(DateTime(timezone=True), nullable=False)
+    duration_minutes = Column(Integer, default=30)
+    buffer_minutes = Column(Integer, default=15)
+    status = Column(String(20), default="scheduled")  # scheduled | cancelled | completed
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 

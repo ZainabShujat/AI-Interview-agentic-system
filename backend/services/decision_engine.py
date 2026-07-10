@@ -24,9 +24,13 @@ class DecisionEngine:
                 count = len(metrics)
                 score = total / count if count > 0 else 0
             
-        if score >= 80:
+        # Dynamic threshold logic
+        passing_score = interview.jd.passing_score if interview.jd and interview.jd.passing_score else 80
+        review_band = passing_score - 15
+        
+        if score >= passing_score:
             return "Qualified"
-        elif score >= 60:
+        elif score >= review_band:
             return "Recruiter Review"
         else:
             return "Reject"

@@ -1,5 +1,5 @@
 import fitz
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from database import get_db
 import models
@@ -36,7 +36,9 @@ async def upload_jd(payload: schemas.JDRequest, db: Session = Depends(get_db)):
         # Save to database
         db_jd = models.JobDescription(
             raw_text=payload.text,
-            parsed_json=parsed_data
+            parsed_json=parsed_data,
+            passing_score=payload.passing_score,
+            available_slots=payload.available_slots
         )
         db.add(db_jd)
         db.commit()
@@ -52,7 +54,12 @@ async def upload_jd(payload: schemas.JDRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error parsing job description: {str(e)}")
 
 @router.post("/upload")
-async def upload_jd_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_jd_file(
+    file: UploadFile = File(...),
+    passing_score: int = Form(60),
+    available_slots: str = Form("[]"),
+    db: Session = Depends(get_db)
+):
     try:
         file_bytes = await file.read()
         raw_text = ""
@@ -68,8 +75,20 @@ async def upload_jd_file(file: UploadFile = File(...), db: Session = Depends(get
         if not raw_text.strip():
             raise HTTPException(status_code=422, detail="Failed to extract readable text from job description.")
 
+        import json
+        slots_list = []
+        try:
+            slots_list = json.loads(available_slots)
+        except:
+            pass
+
         parsed_data = gemini_service.parse_jd(raw_text)
-        db_jd = models.JobDescription(raw_text=raw_text, parsed_json=parsed_data)
+        db_jd = models.JobDescription(
+            raw_text=raw_text, 
+            parsed_json=parsed_data,
+            passing_score=passing_score,
+            available_slots=slots_list
+        )
         db.add(db_jd)
         db.commit()
         db.refresh(db_jd)

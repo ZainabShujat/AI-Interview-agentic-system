@@ -3,6 +3,8 @@ from typing import List, Dict, Any, Optional
 
 class JDRequest(BaseModel):
     text: str
+    passing_score: Optional[int] = 60
+    available_slots: Optional[List[str]] = []
 
 class BlueprintUpdateRequest(BaseModel):
     blueprint: Dict[str, Any]
@@ -148,3 +150,37 @@ class SchedulingResponse(BaseModel):
     meeting_id: Optional[str] = None
     join_url: Optional[str] = None
     start_time: Optional[str] = None
+
+# --- Scheduling Agent Schemas ---
+
+class PersonInfo(BaseModel):
+    name: str
+    email: str
+    availability: List[str]  # ISO 8601 datetime strings
+    preferences: Optional[str] = None  # e.g., "Prefers mornings", "Avoid Friday afternoons"
+
+class ScheduleRequest(BaseModel):
+    recruiter: PersonInfo
+    candidate: PersonInfo
+    duration_minutes: Optional[int] = 30
+    buffer_minutes: Optional[int] = 15
+
+class ScheduleAgentResponse(BaseModel):
+    status: str  # "scheduled" | "no_overlap" | "all_conflicts" | "duplicate" | "error"
+    selected_slot: Optional[str] = None
+    meeting_url: Optional[str] = None
+    meeting_id: Optional[str] = None
+    meeting_password: Optional[str] = None
+    emails_sent: bool = False
+    reasoning: List[str] = []
+    timeline: List[Dict[str, str]] = []
+
+class CancelResponse(BaseModel):
+    status: str
+    message: str
+
+class RescheduleRequest(BaseModel):
+    recruiter: PersonInfo
+    candidate: PersonInfo
+    duration_minutes: Optional[int] = 30
+    buffer_minutes: Optional[int] = 15

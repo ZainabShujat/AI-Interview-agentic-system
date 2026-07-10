@@ -230,12 +230,15 @@ def compile_communication_profile(all_qa: list) -> dict:
 # Mock Fallback Report Generator
 # ---------------------------------------------------------------------------
 
-def get_mock_report_final(all_qa: list, memory: dict) -> dict:
+def get_mock_report_final(all_qa: list, memory: dict, passing_score: int = 60) -> dict:
     """Generate a mock report structure when Gemini is not configured."""
     profile = compile_communication_profile(all_qa)
+    mock_score = 84
+    recommendation = "Strong Hire" if mock_score >= passing_score else "Needs Development"
+    
     return {
-        "overallScore": 84,
-        "recommendation": "Strong Hire",
+        "overallScore": mock_score,
+        "recommendation": recommendation,
         "summary": "The candidate demonstrates exceptional technical articulation and architecture foundations. Communications pace was highly consistent with standard senior engineering benchmarks. Minor adjustments recommended in fintech compliance contexts and message queue depth.",
         "dimensionScores": [
             {"subject": "Accuracy", "A": 85, "fullMark": 100},
@@ -277,6 +280,7 @@ def get_mock_report_final(all_qa: list, memory: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def generate_final_report(all_qa: list, memory: dict,
+                          passing_score: int = 60,
                           config: Optional[GeminiConfig] = None) -> dict:
     """
     Compile the complete interview session and memory into a final diagnostic report.
@@ -293,7 +297,7 @@ def generate_final_report(all_qa: list, memory: dict,
         config = get_default_config()
 
     if not config.api_key:
-        report_json = get_mock_report_final(all_qa, memory)
+        report_json = get_mock_report_final(all_qa, memory, passing_score=passing_score)
         report_json["communicationProfile"] = compile_communication_profile(all_qa)
         report_json["all_qa"] = all_qa
         return report_json
@@ -310,7 +314,7 @@ def generate_final_report(all_qa: list, memory: dict,
     
     Generate:
     1. Overall Score (0-100). Average of evaluations.
-    2. Hiring Recommendation (Strong Hire, Hire, Follow-up, Needs Development).
+    2. Hiring Recommendation (Strong Hire, Hire, Follow-up, Needs Development). The minimum passing criteria set by the recruiter is {passing_score}/100. If the Overall Score is below this threshold, the recommendation MUST be 'Needs Development'.
     3. Exec Summary: 3-4 sentence diagnostic of their performance, pacing, and readiness.
     4. Dimension Scores (Accuracy, Depth, Communication, Scenario Handling, Leadership) out of 100.
     5. Heatmap rating for 6 skills relevant to the session.
@@ -353,7 +357,7 @@ def generate_final_report(all_qa: list, memory: dict,
         return report_json
     except Exception as e:
         logger.warning(f"Report Agent Gemini call failed: {e}. Falling back to mock final report.")
-        report_json = get_mock_report_final(all_qa, memory)
+        report_json = get_mock_report_final(all_qa, memory, passing_score=passing_score)
         report_json["communicationProfile"] = compile_communication_profile(all_qa)
         report_json["all_qa"] = all_qa
         return report_json
