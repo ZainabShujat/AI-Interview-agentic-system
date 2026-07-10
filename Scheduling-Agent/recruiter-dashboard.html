@@ -292,9 +292,10 @@
       <div class="brand-icon">✧</div>
       HireIntel
     </div>
-    <div class="nav-links" style="display:flex; align-items:center; gap:16px;">
-      <input type="password" id="apiKeyInput" placeholder="Enter HIREINTEL_API_KEY" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:6px; padding:6px 12px; color:white; font-size:12px; outline:none; width:220px;" />
-      <a href="playground.html">← Back to Playground</a>
+    <div class="nav-links" style="display:flex; gap:12px; align-items:center;">
+      <input type="email" id="recruiterEmail" placeholder="Your Email (Recruiter)" value="sarah@company.com" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:6px; padding:6px 12px; color:white; font-size:12px; outline:none; width:180px;" />
+      <input type="email" id="candidateEmail" placeholder="Candidate Email" value="alex@email.com" style="background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:6px; padding:6px 12px; color:white; font-size:12px; outline:none; width:180px;" />
+      <a href="playground.html" style="margin-left:8px;">← Back to Playground</a>
     </div>
   </div>
 
@@ -428,11 +429,14 @@
     }
 
     async function triggerSchedulingAPI(userPreferences) {
+      const recEmail = document.getElementById('recruiterEmail').value || 'sarah@company.com';
+      const candEmail = document.getElementById('candidateEmail').value || 'alex@email.com';
+
       // Mock data for the API call
       const payload = {
         recruiter: {
           name: "Sarah Chen",
-          email: "sarah@company.com",
+          email: recEmail,
           availability: [
             "2025-07-15T09:00:00Z",
             "2025-07-15T10:00:00Z",
@@ -443,7 +447,7 @@
         },
         candidate: {
           name: "Alex Johnson",
-          email: "alex@email.com",
+          email: candEmail,
           availability: [
             "2025-07-15T10:00:00Z",
             "2025-07-15T11:00:00Z",
@@ -456,18 +460,22 @@
       };
 
       try {
-        const apiKey = document.getElementById('apiKeyInput').value;
-        const headers = { 'Content-Type': 'application/json' };
-        if (apiKey) headers['x-api-key'] = apiKey;
-
         const res = await fetch(`${API_BASE}/api/schedule`, {
           method: 'POST',
-          headers: headers,
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
         
         const data = await res.json();
         removeTyping();
+        
+        if (!res.ok) {
+          appendMessage(`<b>Backend Error (${res.status}):</b> ${data.detail || JSON.stringify(data)}`, 'agent', true);
+          chatInput.disabled = false;
+          sendBtn.disabled = false;
+          chatInput.focus();
+          return;
+        }
 
         if (data.status === 'scheduled') {
           // Format response
@@ -503,11 +511,7 @@
 
     async function loadMeetings() {
       try {
-        const apiKey = document.getElementById('apiKeyInput')?.value;
-        const headers = {};
-        if (apiKey) headers['x-api-key'] = apiKey;
-
-        const res = await fetch(`${API_BASE}/api/schedule/meetings?email=sarah@company.com`, { headers });
+        const res = await fetch(`${API_BASE}/api/schedule/meetings?email=sarah@company.com`);
         const meetings = await res.json();
         
         const active = meetings.filter(m => m.status === 'scheduled');
