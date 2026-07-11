@@ -22,7 +22,9 @@ class ZoomService:
         response = requests.post(url, auth=auth)
         if response.status_code == 200:
             return response.json().get("access_token")
-        return None
+        else:
+            print(f"Zoom Auth Error ({response.status_code}): {response.text}")
+            return None
 
     @staticmethod
     def create_meeting(topic: str, start_time: datetime, duration: int = 30):
