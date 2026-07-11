@@ -20,6 +20,8 @@ from schemas import (
     ScheduleAgentResponse,
     CancelResponse,
     RescheduleRequest,
+    ChatRequest,
+    ChatResponse,
 )
 from services.zoom_service import ZoomService
 from services.email_service import EmailService
