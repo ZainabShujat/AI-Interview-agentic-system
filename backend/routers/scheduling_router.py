@@ -292,10 +292,21 @@ def schedule_chat(request: ChatRequest, db: Session = Depends(get_db)):
             time_str=time_str,
             meet_link=meeting.join_url
         )
+        
+        EmailService.send_recruiter_notification(
+            recruiter_email=request.recruiter.email,
+            candidate_name=request.candidate.name,
+            candidate_email=request.candidate.email,
+            role="Scheduled Interview",
+            date_str=date_str,
+            time_str=time_str,
+            meet_link=meeting.join_url
+        )
+        
         timeline[-1]["status"] = "done"
         timeline[-1]["detail"] = "Emails resent"
         
-        return "Emails successfully resent."
+        return "Emails successfully resent to both the recruiter and the candidate."
 
     model = genai.GenerativeModel(
         model_name='gemini-1.5-flash',
@@ -303,16 +314,15 @@ def schedule_chat(request: ChatRequest, db: Session = Depends(get_db)):
         system_instruction="You are a helpful AI scheduling assistant for a recruiter. You manage meetings. You can invoke tools to schedule meetings or resend emails. Answer the user naturally based on the tool results. Keep your responses concise."
     )
     
-    chat = model.start_chat()
-    
-    # Load history
+    # Format history for Gemini
+    formatted_history = []
     for msg in request.history[:-1]:
-        if msg.role == "user":
-            chat.send_message(msg.content)
-        else:
-            # We skip adding model responses to this simple chat for now
-            pass
-            
+        # Gemini expects role to be "user" or "model"
+        role = "model" if msg.role in ("agent", "model") else "user"
+        formatted_history.append({"role": role, "parts": [msg.content]})
+        
+    chat = model.start_chat(history=formatted_history)
+    
     # Send the latest user message
     user_msg = request.history[-1].content if request.history else "Hello"
     response = chat.send_message(user_msg)
@@ -323,26 +333,22 @@ def schedule_chat(request: ChatRequest, db: Session = Depends(get_db)):
         if fn := part.function_call:
             if fn.name == "trigger_scheduling":
                 result = trigger_scheduling(fn.args.get("candidate_email", request.candidate.email))
-                # Send result back to model
-                response = chat.send_message(
-                    genai.protos.Part(
-                        function_response=genai.protos.FunctionResponse(
-                            name="trigger_scheduling",
-                            response={"result": result}
-                        )
-                    )
-                )
+                # Send result back to model using standard dict format
+                response = chat.send_message({
+                    "function_response": {
+                        "name": "trigger_scheduling",
+                        "response": {"result": result}
+                    }
+                })
                 agent_text = response.text
             elif fn.name == "resend_emails":
                 result = resend_emails(fn.args.get("candidate_email", request.candidate.email))
-                response = chat.send_message(
-                    genai.protos.Part(
-                        function_response=genai.protos.FunctionResponse(
-                            name="resend_emails",
-                            response={"result": result}
-                        )
-                    )
-                )
+                response = chat.send_message({
+                    "function_response": {
+                        "name": "resend_emails",
+                        "response": {"result": result}
+                    }
+                })
                 agent_text = response.text
         elif part.text:
             agent_text += part.text
