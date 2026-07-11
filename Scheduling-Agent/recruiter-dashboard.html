@@ -406,6 +406,81 @@
       if (el) el.remove();
     }
 
+    let conversationHistory = [];
+
+    async function triggerConversationalAPI(userText) {
+      const recEmail = document.getElementById('recruiterEmail').value || 'sarah@company.com';
+      const candEmail = document.getElementById('candidateEmail').value || 'alex@email.com';
+
+      conversationHistory.push({ role: "user", content: userText });
+
+      const payload = {
+        history: conversationHistory,
+        recruiter: {
+          name: "Sarah Chen",
+          email: recEmail,
+          availability: ["2025-07-15T09:00:00Z", "2025-07-15T10:00:00Z", "2025-07-15T14:00:00Z", "2025-07-16T11:00:00Z"]
+        },
+        candidate: {
+          name: "Alex Johnson",
+          email: candEmail,
+          availability: ["2025-07-15T10:00:00Z", "2025-07-15T11:00:00Z", "2025-07-16T10:00:00Z"]
+        },
+        duration_minutes: 45
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/schedule/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        removeTyping();
+        
+        if (!res.ok) {
+          appendMessage(`<b>Backend Error (${res.status}):</b> ${data.detail || JSON.stringify(data)}`, 'agent', true);
+          return;
+        }
+
+        // Add the agent's textual response to chat
+        let htmlResp = data.response.replace(/\n/g, "<br/>");
+        
+        // If the agent took actions (timeline), render the checkmarks!
+        if (data.timeline && data.timeline.length > 0) {
+          let timelineHtml = `<div class="timeline mt-3 pt-3" style="border-top:1px solid var(--border-hover);">`;
+          timelineHtml += `<div style="font-size:11px; text-transform:uppercase; color:var(--text-secondary); margin-bottom:8px; font-weight:700; letter-spacing:0.5px;">Actions Taken</div>`;
+          data.timeline.forEach(t => {
+            let icon = '';
+            if (t.status === 'done') icon = '✓';
+            else if (t.status === 'warning') icon = '⚠️';
+            else if (t.status === 'error') icon = '✕';
+            else icon = '⏳';
+            timelineHtml += `<div class="timeline-item"><span class="status-icon ${t.status}">${icon}</span> ${t.step}</div>`;
+          });
+          timelineHtml += `</div>`;
+          htmlResp += timelineHtml;
+        }
+
+        appendMessage(htmlResp, 'agent', true);
+        
+        // Record agent response in history
+        conversationHistory.push({ role: "model", content: data.response });
+
+        // Always reload meetings to capture any new schedules or cancellations
+        loadMeetings();
+      } catch (err) {
+        removeTyping();
+        console.error("Chat API Error:", err);
+        appendMessage(`<b>Error:</b> Could not reach backend API at ${API_BASE}. Make sure it is running. (Details: ${err.message})`, 'agent', true);
+      } finally {
+        chatInput.disabled = false;
+        sendBtn.disabled = false;
+        chatInput.focus();
+      }
+    }
+
     async function handleSend(e) {
       e.preventDefault();
       const text = chatInput.value.trim();
@@ -417,96 +492,7 @@
       sendBtn.disabled = true;
 
       showTyping();
-
-      // We simulate the agent understanding the command and triggering the API
-      setTimeout(async () => {
-        removeTyping();
-        appendMessage("Understood. I am cross-referencing Alex's availability with your calendar and preferences. Scheduling now...", "agent");
-        
-        showTyping();
-        await triggerSchedulingAPI(text);
-      }, 1000);
-    }
-
-    async function triggerSchedulingAPI(userPreferences) {
-      const recEmail = document.getElementById('recruiterEmail').value || 'sarah@company.com';
-      const candEmail = document.getElementById('candidateEmail').value || 'alex@email.com';
-
-      // Mock data for the API call
-      const payload = {
-        recruiter: {
-          name: "Sarah Chen",
-          email: recEmail,
-          availability: [
-            "2025-07-15T09:00:00Z",
-            "2025-07-15T10:00:00Z",
-            "2025-07-15T14:00:00Z",
-            "2025-07-16T11:00:00Z"
-          ],
-          preferences: userPreferences
-        },
-        candidate: {
-          name: "Alex Johnson",
-          email: candEmail,
-          availability: [
-            "2025-07-15T10:00:00Z",
-            "2025-07-15T11:00:00Z",
-            "2025-07-16T11:00:00Z"
-          ],
-          preferences: "Prefers morning slots if possible."
-        },
-        duration_minutes: 45,
-        buffer_minutes: 15
-      };
-
-      try {
-        const res = await fetch(`${API_BASE}/api/schedule`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        
-        const data = await res.json();
-        removeTyping();
-        
-        if (!res.ok) {
-          appendMessage(`<b>Backend Error (${res.status}):</b> ${data.detail || JSON.stringify(data)}`, 'agent', true);
-          chatInput.disabled = false;
-          sendBtn.disabled = false;
-          chatInput.focus();
-          return;
-        }
-
-        if (data.status === 'scheduled') {
-          // Format response
-          const dt = new Date(data.selected_slot);
-          const timeStr = dt.toLocaleString('en-US', { weekday: 'long', hour: 'numeric', minute: '2-digit' });
-          
-          let html = `<b>Done! ✅</b><br><br>I've scheduled a 45-minute technical interview for <b>${timeStr}</b>.<br><br>`;
-          html += `<i>Agent Reasoning:</i> ${data.reasoning[data.reasoning.length - 2] || 'Optimal slot chosen based on preferences.'}<br><br>`;
-          
-          html += `<div class="message-timeline">
-            <div class="timeline-row"><span class="icon">✓</span> Created Zoom Meeting (${data.meeting_id})</div>
-            <div class="timeline-row"><span class="icon">✓</span> Sent email to Sarah</div>
-            <div class="timeline-row"><span class="icon">✓</span> Sent email to Alex</div>
-            <div class="timeline-row"><span class="icon">✓</span> Updated Dashboard</div>
-          </div>`;
-          
-          appendMessage(html, 'agent', true);
-          loadMeetings(); // Refresh the dashboard
-        } else {
-          appendMessage(`<b>Issue:</b> I couldn't find a matching slot. (${data.status})`, 'agent', true);
-        }
-
-      } catch (err) {
-        removeTyping();
-        console.error("Scheduling API Error:", err);
-        appendMessage(`<b>Error:</b> Could not reach backend API at ${API_BASE}. Make sure it is running. (Details: ${err.message})`, 'agent', true);
-      }
-
-      chatInput.disabled = false;
-      sendBtn.disabled = false;
-      chatInput.focus();
+      await triggerConversationalAPI(text);
     }
 
     async function loadMeetings() {

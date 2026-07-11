@@ -230,6 +230,132 @@ def schedule_meeting(request: ScheduleRequest, db: Session = Depends(get_db)):
     )
 
 
+@router.post("/chat", response_model=ChatResponse)
+def schedule_chat(request: ChatRequest, db: Session = Depends(get_db)):
+    """
+    Conversational ReAct loop using Gemini.
+    """
+    timeline = []
+    
+    # 1. Initialize Gemini with function calling tools
+    import google.generativeai as genai
+    import json
+    
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    
+    def trigger_scheduling(candidate_email: str) -> str:
+        """Call this to automatically schedule a new meeting between the recruiter and candidate based on their availability."""
+        # Use existing pipeline
+        try:
+            # We just create a standard ScheduleRequest and call our own function
+            req = ScheduleRequest(
+                recruiter=request.recruiter,
+                candidate=request.candidate,
+                duration_minutes=request.duration_minutes,
+                buffer_minutes=request.buffer_minutes
+            )
+            res = schedule_meeting(req, db)
+            timeline.extend(res.timeline)
+            
+            if res.status == "scheduled":
+                return f"Successfully scheduled meeting {res.meeting_id} at {res.selected_slot}. Join URL: {res.meeting_url}"
+            else:
+                return f"Scheduling failed. Status: {res.status}. Reasoning: {', '.join(res.reasoning)}"
+        except Exception as e:
+            return f"Error scheduling: {str(e)}"
+
+    def resend_emails(candidate_email: str) -> str:
+        """Call this to resend the meeting invitation emails to both participants."""
+        timeline.append({"step": "Checking existing meetings to resend email", "status": "running"})
+        meeting = db.query(ScheduledMeeting).filter(
+            ScheduledMeeting.candidate_email == request.candidate.email,
+            ScheduledMeeting.status == "scheduled"
+        ).order_by(ScheduledMeeting.created_at.desc()).first()
+        
+        if not meeting:
+            timeline[-1]["status"] = "error"
+            timeline[-1]["detail"] = "No active meeting found"
+            return "No active meeting found for this candidate."
+            
+        timeline[-1]["status"] = "done"
+        timeline[-1]["detail"] = "Meeting found"
+        
+        timeline.append({"step": "Resending emails", "status": "running"})
+        date_str = meeting.start_time.strftime("%B %d, %Y") if meeting.start_time else "TBD"
+        time_str = meeting.start_time.strftime("%I:%M %p") if meeting.start_time else "TBD"
+        
+        EmailService.send_candidate_confirmation(
+            candidate_name=request.candidate.name,
+            candidate_email=request.candidate.email,
+            role="Scheduled Interview",
+            date_str=date_str,
+            time_str=time_str,
+            meet_link=meeting.join_url
+        )
+        timeline[-1]["status"] = "done"
+        timeline[-1]["detail"] = "Emails resent"
+        
+        return "Emails successfully resent."
+
+    model = genai.GenerativeModel(
+        model_name='gemini-1.5-flash',
+        tools=[trigger_scheduling, resend_emails],
+        system_instruction="You are a helpful AI scheduling assistant for a recruiter. You manage meetings. You can invoke tools to schedule meetings or resend emails. Answer the user naturally based on the tool results. Keep your responses concise."
+    )
+    
+    chat = model.start_chat()
+    
+    # Load history
+    for msg in request.history[:-1]:
+        if msg.role == "user":
+            chat.send_message(msg.content)
+        else:
+            # We skip adding model responses to this simple chat for now
+            pass
+            
+    # Send the latest user message
+    user_msg = request.history[-1].content if request.history else "Hello"
+    response = chat.send_message(user_msg)
+    
+    # Process function calls if any
+    agent_text = ""
+    for part in response.parts:
+        if fn := part.function_call:
+            if fn.name == "trigger_scheduling":
+                result = trigger_scheduling(fn.args.get("candidate_email", request.candidate.email))
+                # Send result back to model
+                response = chat.send_message(
+                    genai.protos.Part(
+                        function_response=genai.protos.FunctionResponse(
+                            name="trigger_scheduling",
+                            response={"result": result}
+                        )
+                    )
+                )
+                agent_text = response.text
+            elif fn.name == "resend_emails":
+                result = resend_emails(fn.args.get("candidate_email", request.candidate.email))
+                response = chat.send_message(
+                    genai.protos.Part(
+                        function_response=genai.protos.FunctionResponse(
+                            name="resend_emails",
+                            response={"result": result}
+                        )
+                    )
+                )
+                agent_text = response.text
+        elif part.text:
+            agent_text += part.text
+
+    if not agent_text:
+        agent_text = response.text
+
+    return ChatResponse(
+        response=agent_text,
+        timeline=timeline,
+        status="success"
+    )
+
 @router.get("/meetings")
 def list_meetings(
     email: Optional[str] = Query(None),

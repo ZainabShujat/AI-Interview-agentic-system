@@ -175,6 +175,22 @@ class ScheduleAgentResponse(BaseModel):
     reasoning: List[str] = []
     timeline: List[Dict[str, str]] = []
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    history: List[ChatMessage]
+    recruiter: PersonInfo
+    candidate: PersonInfo
+    duration_minutes: int = 30
+    buffer_minutes: int = 15
+
+class ChatResponse(BaseModel):
+    response: str
+    timeline: List[dict] = []
+    status: Optional[str] = None
+
 class CancelResponse(BaseModel):
     status: str
     message: str
