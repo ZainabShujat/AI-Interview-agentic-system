@@ -55,3 +55,6 @@ Thumbs.db
 # Agent shares and archives
 agentshare*/
 *.zip
+
+# Projects  
+SmartHire/

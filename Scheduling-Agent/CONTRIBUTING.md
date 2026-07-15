@@ -14,7 +14,7 @@ Thank you for your interest in contributing to this AB Talks Open Agent!
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-org/scheduling-agent.git
+git clone https://github.com/ab-talks/scheduling-agent.git
 
 # Install dependencies
 pip install -r requirements.txt

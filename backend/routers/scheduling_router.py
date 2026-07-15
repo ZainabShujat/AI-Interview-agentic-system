@@ -239,6 +239,8 @@ def schedule_chat(request: ChatRequest, db: Session = Depends(get_db)):
     """
     timeline = []
     
+    try:
+    
     # 1. Initialize Gemini with function calling tools
     import google.generativeai as genai
     import json
@@ -363,6 +365,14 @@ def schedule_chat(request: ChatRequest, db: Session = Depends(get_db)):
         timeline=timeline,
         status="success"
     )
+    except Exception as e:
+        import traceback
+        error_msg = f"Backend Crash Details:\n{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        return ChatResponse(
+            response=error_msg,
+            timeline=timeline,
+            status="error"
+        )
 
 @router.get("/meetings")
 def list_meetings(
