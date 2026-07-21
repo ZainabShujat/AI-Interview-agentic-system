@@ -243,7 +243,14 @@ def schedule_chat(request: ChatRequest, db: Session = Depends(get_db)):
     import google.generativeai as genai
     import json
     
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return ChatResponse(
+            response="Error: GEMINI_API_KEY environment variable is not set on the server. Please add it to your Render environment variables.",
+            timeline=timeline,
+            status="error"
+        )
+    genai.configure(api_key=api_key)
     
     def trigger_scheduling(candidate_email: str) -> str:
         """Call this to automatically schedule a new meeting between the recruiter and candidate based on their availability."""
@@ -310,9 +317,33 @@ def schedule_chat(request: ChatRequest, db: Session = Depends(get_db)):
         
         return "Emails successfully resent to both the recruiter and the candidate."
 
+    trigger_scheduling_tool = genai.types.FunctionDeclaration(
+        name="trigger_scheduling",
+        description="Call this to automatically schedule a new meeting between the recruiter and candidate based on their availability.",
+        parameters=genai.types.Schema(
+            type=genai.types.Type.OBJECT,
+            properties={
+                "candidate_email": genai.types.Schema(type=genai.types.Type.STRING)
+            },
+            required=["candidate_email"]
+        )
+    )
+
+    resend_emails_tool = genai.types.FunctionDeclaration(
+        name="resend_emails",
+        description="Call this to resend the meeting invitation emails to both participants.",
+        parameters=genai.types.Schema(
+            type=genai.types.Type.OBJECT,
+            properties={
+                "candidate_email": genai.types.Schema(type=genai.types.Type.STRING)
+            },
+            required=["candidate_email"]
+        )
+    )
+
     model = genai.GenerativeModel(
         model_name='gemini-1.5-flash',
-        tools=[trigger_scheduling, resend_emails],
+        tools=[trigger_scheduling_tool, resend_emails_tool],
         system_instruction="You are a helpful AI scheduling assistant for a recruiter. You manage meetings. You can invoke tools to schedule meetings or resend emails. Answer the user naturally based on the tool results. Keep your responses concise."
     )
     

@@ -156,6 +156,75 @@
     .booking-card h3 { margin: 0 0 8px 0; font-size: 15px; display: flex; align-items: center; gap: 6px; color: #10b981; }
     .booking-card p { margin: 4px 0; font-size: 13px; color: var(--text-secondary); }
     .booking-card .slot { font-weight: 600; color: var(--text); margin-top: 8px; font-size: 14px;}
+
+    .wizard-form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-group label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .field-group input,
+    .field-group textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font: inherit;
+      box-sizing: border-box;
+      background: #fff;
+    }
+
+    .field-group textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .field-group input:focus,
+    .field-group textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+
+    .submit-btn {
+      width: 100%;
+      border: none;
+      border-radius: 14px;
+      padding: 14px 18px;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .submit-btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .meta-note {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin: 0;
+    }
     
     .chat-footer {
       padding: 16px;
@@ -202,172 +271,173 @@
       <div class="avatar">🤖</div>
       <div>
         <h2>Scheduling Assistant</h2>
-        <p>AI Agent</p>
+        <p>Mock scheduling agent</p>
       </div>
     </div>
     
     <div class="chat-body" id="chatBody">
       <div class="message bot">
-        Hi there! 👋 I'm your AI scheduling assistant. I can help you find a time for your interview. What's your full name and email to get started?
+        Fill in the details below. The form will schedule the interview, create a mock Zoom link, and generate mock emails for both people.
       </div>
-      
-      <div class="typing-indicator" id="typing">
-        <span></span><span></span><span></span>
-      </div>
-    </div>
-    
-    <div class="chat-footer">
-      <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." onkeypress="handleKeyPress(event)" autocomplete="off" />
-      <button class="send-btn" onclick="sendMessage()">
-        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-      </button>
-    </div>
-  </div>
 
-  <!-- Config for Backend -->
-  <div style="max-width: 480px; margin-top: 16px; background: white; padding: 16px; border-radius: 12px; border: 1px solid var(--border);">
-    <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Backend URL</label>
-    <input type="text" id="apiBase" value="https://hireintel-bv0v.onrender.com" style="width: 100%; padding: 8px 12px; margin-top: 6px; border: 1px solid var(--border); border-radius: 8px;" />
-    
-    <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; margin-top: 12px; display: block;">API Key</label>
-    <input type="text" id="apiKey" value="hireintel_7Qfr3j9vLm8xA2P" style="width: 100%; padding: 8px 12px; margin-top: 6px; border: 1px solid var(--border); border-radius: 8px;" />
+      <form id="schedulerForm" class="wizard-form">
+        <div class="field-group">
+          <label for="candidateName">Your full name</label>
+          <input type="text" id="candidateName" placeholder="Alex Johnson" required />
+        </div>
+
+        <div class="field-group">
+          <label for="candidateEmail">Your email</label>
+          <input type="email" id="candidateEmail" placeholder="alex@example.com" required />
+        </div>
+
+        <div class="field-group">
+          <label for="resumeFile">Resume</label>
+          <input type="file" id="resumeFile" accept=".pdf,.doc,.docx,.txt" required />
+        </div>
+
+        <div class="field-group">
+          <label for="jobTitle">Profile / job title</label>
+          <input type="text" id="jobTitle" placeholder="Frontend Developer" required />
+        </div>
+
+        <div class="field-group">
+          <label for="interviewerName">Interviewer name</label>
+          <input type="text" id="interviewerName" placeholder="Sarah Chen" required />
+        </div>
+
+        <div class="field-group">
+          <label for="availability">Available time slots</label>
+          <textarea id="availability" placeholder="Enter ISO 8601 slots, one per line\n2026-07-16T10:00:00Z\n2026-07-16T14:00:00Z" required></textarea>
+          <p class="meta-note">Use ISO timestamps. The earliest overlapping slot will be selected automatically.</p>
+        </div>
+
+        <div class="field-group">
+          <label for="apiBase">Backend URL</label>
+          <input type="text" id="apiBase" value="http://localhost:8000" />
+        </div>
+
+        <button type="submit" class="submit-btn">Schedule interview</button>
+      </form>
+
+      <div id="resultArea" style="width:100%; display:flex; flex-direction:column; gap:12px;"></div>
+    </div>
   </div>
 
   <script>
     const chatBody = document.getElementById('chatBody');
-    const chatInput = document.getElementById('chatInput');
-    const typing = document.getElementById('typing');
-    
-    let chatHistory = [];
-
-    function handleKeyPress(e) {
-      if (e.key === 'Enter') sendMessage();
-    }
+    const resultArea = document.getElementById('resultArea');
+    const schedulerForm = document.getElementById('schedulerForm');
 
     function getApiBase() {
       return document.getElementById('apiBase').value.replace(/\/+$/, '');
     }
 
-    function getApiKey() {
-      return document.getElementById('apiKey').value.trim();
+    function getAvailabilityFromTextarea() {
+      return document.getElementById('availability').value
+        .split(/\r?\n|,/) 
+        .map(value => value.trim())
+        .filter(Boolean);
     }
 
-    async function sendMessage() {
-      const text = chatInput.value.trim();
-      if (!text) return;
-
-      appendMessage(text, 'user');
-      chatInput.value = '';
-      
-      chatHistory.push({ role: 'user', content: text });
-      
-      showTyping();
-      const startTime = performance.now();
-
-      const payload = {
-        history: chatHistory,
-        recruiter: {
-          name: "Sarah Chen",
-          email: "sarah@company.com",
-          availability: [
-            new Date(Date.now() + 86400000 * 1).toISOString(),
-            new Date(Date.now() + 86400000 * 2).toISOString()
-          ],
-          preferences: ""
-        },
-        candidate: {
-          name: "Alex Candidate",
-          email: "alex@example.com",
-          availability: [
-            new Date(Date.now() + 86400000 * 1).toISOString()
-          ],
-          preferences: ""
-        },
-        duration_minutes: 30,
-        buffer_minutes: 15
-      };
-
-      try {
-        const response = await fetch(`${getApiBase()}/api/schedule/chat`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-api-key': getApiKey()
-          },
-          body: JSON.stringify(payload)
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Server returned ${response.status}`);
-        }
-        
-        const data = await response.json();
-        const latency = Math.round(performance.now() - startTime);
-        hideTyping();
-        
-        if (data.response) {
-          appendMessage(data.response, 'bot', latency);
-          chatHistory.push({ role: 'model', content: data.response });
-        }
-
-      } catch (error) {
-        console.error(error);
-        hideTyping();
-        appendMessage("Sorry, I had trouble connecting to the backend server. Is FastAPI running?", 'bot');
-      }
-    }
-
-    function appendMessage(text, sender, latency = null) {
-      const msgDiv = document.createElement('div');
-      msgDiv.className = `message ${sender}`;
-      msgDiv.innerText = text;
-      
-      chatBody.insertBefore(msgDiv, typing);
-      
-      if (sender === 'bot' && latency !== null) {
-        const latDiv = document.createElement('div');
-        latDiv.className = 'latency-badge';
-        latDiv.innerText = `⏱ ${latency} ms`;
-        chatBody.insertBefore(latDiv, typing);
-      }
-      
-      chatBody.scrollTop = chatBody.scrollHeight;
-    }
-    
-    function appendBookingCard(data) {
+    function renderResultCard(data, resumeName) {
       const card = document.createElement('div');
       card.className = 'booking-card';
-      
-      const dateStr = new Date(data.selected_slot).toLocaleString('en-US', {
-        weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit'
-      });
-      
-      let reasonsHtml = '';
-      if (data.reasoning && data.reasoning.length > 0) {
-        const lastReason = data.reasoning[data.reasoning.length - 1];
-        reasonsHtml = `<p><em>${lastReason}</em></p>`;
-      }
-      
+
+      const emailsHtml = Array.isArray(data.emails)
+        ? data.emails.map(email => `
+            <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
+              <p style="margin:0 0 4px 0; font-weight:600; color:var(--text);">To: ${email.to.name} &lt;${email.to.email}&gt;</p>
+              <p style="white-space:pre-wrap; margin:0; font-size:12px; line-height:1.5; color:var(--text-secondary);">${email.body}</p>
+            </div>
+          `).join('')
+        : '';
+
+      const timelineHtml = Array.isArray(data.timeline)
+        ? `<div style="margin-top:12px; font-size:12px; color: var(--text-secondary);">${data.timeline.map(step => `<div style="margin-top:6px;"><strong>${step.step}:</strong> ${step.detail}</div>`).join('')}</div>`
+        : '';
+
       card.innerHTML = `
-        <h3>✅ Interview Booked</h3>
-        <p>Status: ${data.status}</p>
-        <div class="slot">${dateStr}</div>
-        ${reasonsHtml}
+        <h3>✅ Interview Scheduled</h3>
+        <p><strong>Status:</strong> ${data.status || 'scheduled'}</p>
+        <p><strong>Time:</strong> ${data.selected_slot || 'N/A'}</p>
+        <p><strong>Job title:</strong> ${data.job_title || 'N/A'}</p>
+        <p><strong>Interviewer:</strong> ${data.interviewer_name || 'N/A'}</p>
+        <p><strong>Resume:</strong> ${resumeName || data.resume_name || 'N/A'}</p>
+        <p><strong>Mock Zoom:</strong> <a href="${data.meeting_url}" target="_blank" rel="noreferrer">${data.meeting_url}</a></p>
+        <p><strong>Meeting ID:</strong> ${data.meeting_id || 'N/A'}</p>
+        <p><strong>Password:</strong> ${data.meeting_password || 'N/A'}</p>
+        <p><strong>Emails sent:</strong> ${data.emails_sent ? 'Yes' : 'No'}</p>
+        ${timelineHtml}
+        ${emailsHtml}
       `;
-      
-      chatBody.insertBefore(card, typing);
+
+      resultArea.innerHTML = '';
+      resultArea.appendChild(card);
       chatBody.scrollTop = chatBody.scrollHeight;
     }
 
-    function showTyping() {
-      typing.style.display = 'block';
-      chatBody.appendChild(typing);
-      chatBody.scrollTop = chatBody.scrollHeight;
-    }
+    schedulerForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
 
-    function hideTyping() {
-      typing.style.display = 'none';
-    }
+      const name = document.getElementById('candidateName').value.trim();
+      const email = document.getElementById('candidateEmail').value.trim();
+      const resumeInput = document.getElementById('resumeFile');
+      const resumeFile = resumeInput.files[0];
+      const jobTitle = document.getElementById('jobTitle').value.trim();
+      const interviewerName = document.getElementById('interviewerName').value.trim();
+      const availability = getAvailabilityFromTextarea();
+
+      if (!name || !email || !resumeFile || !jobTitle || !interviewerName || availability.length === 0) {
+        resultArea.innerHTML = '<div class="message bot">Please complete every field before scheduling.</div>';
+        return;
+      }
+
+      const payload = {
+        recruiter: {
+          name: interviewerName,
+          availability,
+          job_title: jobTitle,
+          interviewer_name: interviewerName,
+        },
+        candidate: {
+          name,
+          email,
+          availability,
+          resume_name: resumeFile.name,
+        },
+        job_title: jobTitle,
+        interviewer_name: interviewerName,
+        resume_name: resumeFile.name,
+        duration_minutes: 30,
+        buffer_minutes: 15,
+      };
+
+      const submitButton = schedulerForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      submitButton.textContent = 'Scheduling...';
+
+      try {
+        const response = await fetch(`${getApiBase()}/api/schedule`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+
+        const data = await response.json();
+        renderResultCard(data, resumeFile.name);
+      } catch (error) {
+        console.error(error);
+        resultArea.innerHTML = '<div class="message bot">Sorry, the local scheduler could not be reached.</div>';
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Schedule interview';
+      }
+    });
   </script>
 </body>
 </html>

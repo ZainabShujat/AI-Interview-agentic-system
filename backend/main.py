@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
-from routers import resume_router, jd_router, match_router, interview_router, roadmap_router, workflow_router, scheduling_router
+from routers import resume_router, jd_router, match_router, interview_router, roadmap_router, workflow_router, scheduling_router, voice_interview_router
 from middleware import APIKeyMiddleware
 
 # Initialize database tables
@@ -35,6 +35,7 @@ app.include_router(interview_router.router)
 app.include_router(roadmap_router.router)
 app.include_router(workflow_router.router)
 app.include_router(scheduling_router.router)
+app.include_router(voice_interview_router.router)
 
 @app.get("/")
 def read_root():

@@ -86,18 +86,48 @@ sequenceDiagram
 
 ---
 
-## Playground
+## Installable Agent
 
-Open `playground.html` in your browser and point it at your running backend. No code required.
+This repo is meant to be pushed as a pluggable package. Another project can install it, import the agent, or run the CLI directly.
 
-The playground includes:
-- **Recruiter & Candidate** panels with slot management
-- **Duration & Buffer** preset buttons (15/30/45/60 min)
-- **Schedule Interview** button that calls the real API
-- **Execution Timeline** showing each step as it happens
-- **Agent Decision Log** explaining why each slot was chosen or skipped
-- **Meeting Dashboard** with status badges (🟢 🔴 🟡) and cancel buttons
-- **Agent Metrics** — meetings scheduled, avg time, conflicts resolved, emails sent
+### Install
+
+```bash
+pip install .
+```
+
+### Import
+
+```python
+from scheduling_agent import SchedulingAgent
+
+agent = SchedulingAgent()
+result = agent.schedule(
+  recruiter_slots=["2026-07-16T10:00:00Z"],
+  candidate_slots=["2026-07-16T10:00:00Z"],
+  existing_meetings=[],
+)
+```
+
+### CLI
+
+```bash
+scheduling-agent --input examples/schedule_request.json
+```
+
+The CLI prints the scheduled meeting record as JSON, including the mock Zoom link and mock email payloads.
+
+## Local Demo
+
+Open `chat.html` in your browser and point it at `http://localhost:8000`.
+
+The form includes:
+- **Candidate name and email**
+- **Resume upload**
+- **Profile / job title**
+- **Interviewer name**
+- **Available time slots**
+- **Mock confirmation output** showing the Zoom link, meeting ID, password, and the two email bodies
 
 ---
 
@@ -178,15 +208,11 @@ Cancel the existing meeting and schedule a new one with fresh availability. Send
 ## Quick Start
 
 ```bash
-# 1. Start the HireIntel backend
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
+# install the package
+pip install .
 
-# 2. Run the example
-cd Scheduling-Agent
-pip install -r requirements.txt
-python example.py
+# run the local mock scheduler server
+python chat_server.py
 ```
 
 ---
@@ -195,13 +221,16 @@ python example.py
 
 | Variable | Description | Required |
 |---|---|---|
-| `ZOOM_ACCOUNT_ID` | Zoom Server-to-Server OAuth Account ID | Yes |
-| `ZOOM_CLIENT_ID` | Zoom OAuth Client ID | Yes |
-| `ZOOM_CLIENT_SECRET` | Zoom OAuth Client Secret | Yes |
-| `SMTP_SERVER` | SMTP server hostname | Yes |
-| `SMTP_PORT` | SMTP server port (default: 587) | Yes |
-| `SMTP_USERNAME` | Email address for sending | Yes |
-| `SMTP_PASSWORD` | Email password or app password | Yes |
+| `ZOOM_ACCOUNT_ID` | Zoom Server-to-Server OAuth Account ID | Optional |
+| `ZOOM_CLIENT_ID` | Zoom OAuth Client ID | Optional |
+| `ZOOM_CLIENT_SECRET` | Zoom OAuth Client Secret | Optional |
+| `SMTP_SERVER` | SMTP server hostname | Optional |
+| `SMTP_PORT` | SMTP server port (default: 587) | Optional |
+| `SMTP_USERNAME` | Email address for sending | Optional |
+| `SMTP_PASSWORD` | Email password or app password | Optional |
+| `GEMINI_API_KEY` | Gemini key for legacy AI slot picking | Optional |
+
+If you are only using the mock local agent flow, the package works without any of these values.
 
 ---
 

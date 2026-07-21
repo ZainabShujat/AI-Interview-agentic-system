@@ -4,7 +4,8 @@ import uuid
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import google.generativeai as genai
 from scheduling_agent import SchedulingAgent
-from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse, parse_qs
+from agent_core import build_timeline, create_mock_meeting, generate_mock_email, meetings_registry, parse_iso_datetime, schedule_from_payload
 
 # Try to load from backend .env if not in environment
 if not os.getenv("GEMINI_API_KEY"):
@@ -31,14 +32,6 @@ else:
 
 # In-memory chat sessions
 sessions = {}
-
-# Mock recruiter data for the demo
-RECRUITER_SLOTS = [
-    (datetime.now(timezone.utc) + timedelta(days=1, hours=10)).isoformat(),
-    (datetime.now(timezone.utc) + timedelta(days=1, hours=14)).isoformat(),
-    (datetime.now(timezone.utc) + timedelta(days=2, hours=11)).isoformat(),
-]
-RECRUITER_PREFS = "Prefers afternoon slots if possible. Avoid Fridays."
 
 # Store booking results globally for the demo so we can easily fetch them
 booking_results = {}
@@ -87,66 +80,56 @@ class ChatHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        if self.path == '/' or self.path == '/chat.html':
+        parsed = urlparse(self.path)
+        if parsed.path == '/' or parsed.path == '/chat.html':
             self.path = '/chat.html'
-        return super().do_GET()
+            return super().do_GET()
 
-    def do_POST(self):
-        if self.path == '/api/chat':
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            req = json.loads(post_data.decode('utf-8'))
-            
-            session_id = req.get('session_id', 'default')
-            user_message = req.get('message', '')
-            
-            if session_id not in sessions:
-                system_instruction = (
-                    "You are a friendly, conversational AI Interview Scheduler for our company. "
-                    "Your goal is to collect: Name, Email, and Preferred Dates/Times for an interview. "
-                    "Always be polite and conversational. Do not output markdown, keep it like a text message. "
-                    "If they provide partial info, acknowledge it and ask for the rest. "
-                    "Once you have Name, Email, and at least one or two Date/Time slots they are available, "
-                    "convert their times into ISO 8601 strings and call the book_interview function."
-                    "After booking, congratulate them and tell them the final time!"
-                )
-                
-                chat_model = genai.GenerativeModel(
-                    "gemini-1.5-flash",
-                    system_instruction=system_instruction,
-                    tools=[book_interview]
-                )
-                sessions[session_id] = chat_model.start_chat(enable_automatic_function_calling=True)
-                
-            chat = sessions[session_id]
-            
-            try:
-                response = chat.send_message(user_message)
-                reply_text = response.text
-                
-                # Check if a booking was made recently in this conversation
-                # We can check our global booking_results or just let the LLM's text suffice.
-                # To show the rich card, we'll return all recent booking results just in case.
-                
+        if parsed.path == '/api/schedule/meetings':
+            query = parse_qs(parsed.query)
+            email_filter = query.get('email', [None])[0]
+            status_filter = query.get('status', [None])[0]
+            meetings = meetings_registry
+            if email_filter:
+                meetings = [m for m in meetings if m.get('recruiter_email') == email_filter or m.get('candidate_email') == email_filter]
+            if status_filter:
+                meetings = [m for m in meetings if m.get('status') == status_filter]
+
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(meetings).encode('utf-8'))
+            return
+
+        if parsed.path.startswith('/api/schedule/'):
+            meeting_id = parsed.path.rsplit('/', 1)[-1]
+            meeting = next((m for m in meetings_registry if m.get('meeting_id') == meeting_id), None)
+            if meeting:
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                
-                # Find the most recent booking result to send to the UI
-                latest_booking = None
-                if booking_results:
-                    latest_booking = list(booking_results.values())[-1]
-                
-                res = {
-                    "reply": reply_text,
-                    "booking_data": latest_booking
-                }
-                
-                # Clear booking_results so we don't send it again
-                booking_results.clear()
-                
-                self.wfile.write(json.dumps(res).encode('utf-8'))
-                
+                self.wfile.write(json.dumps(meeting).encode('utf-8'))
+            else:
+                self.send_response(404)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Meeting not found"}).encode('utf-8'))
+            return
+
+        return super().do_GET()
+
+    def do_POST(self):
+        if self.path == '/api/schedule':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            req = json.loads(post_data.decode('utf-8'))
+
+            try:
+                result = schedule_from_payload(req)
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(result).encode('utf-8'))
             except Exception as e:
                 import traceback
                 traceback.print_exc()
@@ -154,6 +137,52 @@ class ChatHandler(SimpleHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+
+        elif self.path in ('/api/chat', '/api/schedule/chat'):
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            req = json.loads(post_data.decode('utf-8'))
+
+            if self.path == '/api/schedule/chat':
+                try:
+                    result = schedule_from_payload(req)
+                    conversation_reply = (
+                        f"Your interview is scheduled for {result['selected_slot']}. "
+                        f"I created a mock Zoom link and sent mock emails to both participants."
+                        if result.get('status') == 'scheduled'
+                        else "I could not find an overlapping time slot for both participants."
+                    )
+
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        "response": conversation_reply,
+                        "status": result.get('status'),
+                        "timeline": result.get('timeline', []),
+                        "selected_slot": result.get('selected_slot'),
+                        "meeting_url": result.get('meeting_url'),
+                        "meeting_id": result.get('meeting_id'),
+                        "meeting_password": result.get('meeting_password'),
+                        "emails_sent": result.get('emails_sent', False),
+                        "emails": result.get('emails', []),
+                        "job_title": result.get('job_title'),
+                        "interviewer_name": result.get('interviewer_name'),
+                        "resume_name": result.get('resume_name'),
+                    }).encode('utf-8'))
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    self.send_response(500)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+
+            elif self.path == '/api/chat':
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"reply": "Use /api/schedule/chat for scheduling."}).encode('utf-8'))
         else:
             self.send_response(404)
             self.end_headers()

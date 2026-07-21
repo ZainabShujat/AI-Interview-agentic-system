@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice AI Interviewer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg: #0a0a0f; --panel: rgba(255,255,255,0.03); --border: rgba(255,255,255,0.08); --text: #f0f0f5; --accent: #ef4444; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; padding: 40px; }
+    .container { max-width: 1000px; margin: 0 auto; display: flex; gap: 24px; }
+    .main-col { flex: 2; }
+    .side-col { flex: 1; }
+    h1 { font-size: 32px; font-weight: 700; margin-bottom: 24px; color: var(--accent); }
+    .card { background: var(--panel); border: 1px solid var(--border); padding: 24px; border-radius: 12px; margin-bottom: 24px; }
+    textarea { width: 100%; height: 80px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
+    button { background: var(--accent); color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    pre { background: rgba(0,0,0,0.3); padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; color: #fca5a5; }
+    .chat-bubble { padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; max-width: 80%; }
+    .chat-ai { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-bottom-left-radius: 4px; }
+    .chat-user { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-bottom-right-radius: 4px; margin-left: auto; }
+    #videoPreview { width: 100%; border-radius: 8px; background: #000; aspect-ratio: 16/9; margin-bottom: 16px; object-fit: cover;}
+    .record-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 16px; font-size: 16px; background: #22c55e;}
+    .record-btn.recording { background: #ef4444; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div style="max-width:1000px; margin: 0 auto;">
+    <h1>Autonomous Voice Interviewer</h1>
+    
+    <div class="card" id="setupSection">
+      <h3>1. Setup Interview Context</h3>
+      <textarea id="jdInput" placeholder="Paste Job Description here...">Software Engineer with 3 years experience in Python and FastAPI.</textarea>
+      <textarea id="resumeInput" placeholder="Paste Candidate Resume here...">Jane Doe. Experience in Python, Django, and React.</textarea>
+      <button id="startBtn">Start Interview</button>
+    </div>
+
+    <div class="container" id="interviewSection" style="display:none;">
+      <div class="main-col">
+        <div class="card">
+          <div id="chatHistory" style="height: 400px; overflow-y: auto; margin-bottom: 20px;">
+            <div class="chat-bubble chat-ai">Waiting for initialization...</div>
+          </div>
+          <button id="recordBtn" class="record-btn" disabled>🎤 Hold to Speak</button>
+        </div>
+      </div>
+      <div class="side-col">
+        <div class="card">
+          <video id="videoPreview" autoplay muted playsinline></video>
+          <div style="font-size: 14px; color: #8b8b9e;">
+            <strong>AI Status:</strong> <span id="aiStatus">Initializing...</span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Latest Signals</h3>
+          <pre id="signalsView">No data yet.</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:5004";
+    let sessionId = null;
+    let mediaRecorder;
+    let audioChunks = [];
+    
+    const synth = window.speechSynthesis;
+
+    // UI Elements
+    const startBtn = document.getElementById('startBtn');
+    const recordBtn = document.getElementById('recordBtn');
+    const chatHistory = document.getElementById('chatHistory');
+    const aiStatus = document.getElementById('aiStatus');
+    const signalsView = document.getElementById('signalsView');
+    const setupSection = document.getElementById('setupSection');
+    const interviewSection = document.getElementById('interviewSection');
+    const videoPreview = document.getElementById('videoPreview');
+
+    function appendMessage(role, text) {
+      const div = document.createElement('div');
+      div.className = `chat-bubble chat-${role}`;
+      div.textContent = text;
+      chatHistory.appendChild(div);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    function speakText(text) {
+      if (synth.speaking) synth.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onend = () => { aiStatus.textContent = "Listening"; recordBtn.disabled = false; };
+      aiStatus.textContent = "Speaking";
+      synth.speak(utterance);
+    }
+
+    async function initCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        videoPreview.srcObject = stream;
+        
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => { if(e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.onstop = processAudio;
+      } catch (err) {
+        alert("Camera/Mic access required for the Voice Interview Agent.");
+      }
+    }
+
+    startBtn.onclick = async () => {
+      startBtn.disabled = true;
+      startBtn.textContent = "Agent is analyzing context...";
+      
+      try {
+        const res = await fetch(`${API_URL}/api/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jd_text: document.getElementById('jdInput').value,
+            resume_text: document.getElementById('resumeInput').value
+          })
+        });
+        const data = await res.json();
+        sessionId = data.session_id;
+        
+        setupSection.style.display = 'none';
+        interviewSection.style.display = 'flex';
+        
+        await initCamera();
+        
+        // Agent controls the first question! Frontend is dumb.
+        chatHistory.innerHTML = "";
+        appendMessage('ai', data.first_question);
+        speakText(data.first_question);
+        
+      } catch (e) {
+        alert("Error initializing interview.");
+        startBtn.disabled = false;
+        startBtn.textContent = "Start Interview";
+      }
+    };
+
+    recordBtn.onmousedown = () => {
+      if (synth.speaking) synth.cancel();
+      audioChunks = [];
+      mediaRecorder.start();
+      recordBtn.classList.add('recording');
+      recordBtn.textContent = "Recording... Release to send.";
+      aiStatus.textContent = "Listening to Candidate";
+    };
+
+    recordBtn.onmouseup = () => {
+      if(mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        recordBtn.classList.remove('recording');
+        recordBtn.textContent = "Processing...";
+        recordBtn.disabled = true;
+        aiStatus.textContent = "Agent is thinking...";
+      }
+    };
+    
+    recordBtn.ontouchstart = (e) => { e.preventDefault(); recordBtn.onmousedown(); };
+    recordBtn.ontouchend = (e) => { e.preventDefault(); recordBtn.onmouseup(); };
+
+    async function processAudio() {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      const formData = new FormData();
+      formData.append("audio_file", audioBlob, "answer.wav");
+      formData.append("session_id", sessionId);
+
+      try {
+        const res = await fetch(`${API_URL}/api/speak`, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        
+        appendMessage('user', data.transcript);
+        
+        signalsView.textContent = JSON.stringify({
+          signals: data.acoustic_signals,
+          evaluation: data.evaluation
+        }, null, 2);
+        
+        appendMessage('ai', data.next_question);
+        speakText(data.next_question);
+        
+      } catch(e) {
+        alert("Error processing audio.");
+        recordBtn.textContent = "🎤 Hold to Speak";
+        recordBtn.disabled = false;
+        aiStatus.textContent = "Error";
+      }
+    }
+  </script>
+</body>
+</html>
